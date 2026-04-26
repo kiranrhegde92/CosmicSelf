@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "CosmicSelf",
+    "slug": "cosmicself",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "cosmicself",
+    "newArchEnabled": false,
+    "splash": {
+      "backgroundColor": "#080817",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cosmicself.app"
+    },
+    "android": {
+      "package": "com.cosmicself.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#080817"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": []
+  }
+}
