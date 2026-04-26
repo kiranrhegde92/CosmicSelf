@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import GlassCard from '../components/ui/GlassCard';
@@ -30,6 +31,7 @@ type Field = 'name' | 'email' | 'password' | 'confirm';
 
 export default function SignupScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const { t } = useTranslation();
   const signup = useAuthStore((s) => s.signup);
   const social = useSocialAuth({
     onSuccess: () => navigation.replace('BirthDetails'),
@@ -45,10 +47,10 @@ export default function SignupScreen() {
 
   const validate = () => {
     const next: Partial<Record<Field, string>> = {};
-    if (!name.trim()) next.name = 'Please enter your name';
-    if (!email.trim()) next.email = 'Please enter your email or phone';
-    if (password.length < 6) next.password = 'Password must be at least 6 characters';
-    if (confirm !== password) next.confirm = 'Passwords do not match';
+    if (!name.trim()) next.name = t('auth.signup.errors.name');
+    if (!email.trim()) next.email = t('auth.signup.errors.email');
+    if (password.length < 6) next.password = t('auth.signup.errors.password');
+    if (confirm !== password) next.confirm = t('auth.signup.errors.confirm');
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -83,21 +85,21 @@ export default function SignupScreen() {
             <View style={styles.headerOrnament}>
               <CosmicIcon name="sparkle" color={colors.goldPrimary} size={20} />
             </View>
-            <Text style={[typography.hero, styles.title]}>Begin Your Journey</Text>
+            <Text style={[typography.hero, styles.title]}>{t('auth.signup.title')}</Text>
             <Text style={[typography.subtitle, styles.subtitle]}>
-              The stars are waiting for you
+              {t('auth.signup.subtitle')}
             </Text>
 
             <GlassCard style={styles.card}>
               <CosmicInput
-                placeholder="Full Name"
+                placeholder={t('auth.signup.namePlaceholder')}
                 icon="user"
                 value={name}
                 onChangeText={setName}
                 error={errors.name}
               />
               <CosmicInput
-                placeholder="Email / Phone"
+                placeholder={t('auth.signup.emailPlaceholder')}
                 icon="mail"
                 value={email}
                 onChangeText={setEmail}
@@ -106,7 +108,7 @@ export default function SignupScreen() {
                 error={errors.email}
               />
               <CosmicInput
-                placeholder="Password"
+                placeholder={t('auth.signup.passwordPlaceholder')}
                 icon="lock"
                 value={password}
                 onChangeText={setPassword}
@@ -115,7 +117,7 @@ export default function SignupScreen() {
                 error={errors.password}
               />
               <CosmicInput
-                placeholder="Confirm Password"
+                placeholder={t('auth.signup.confirmPlaceholder')}
                 icon="lock"
                 value={confirm}
                 onChangeText={setConfirm}
@@ -128,20 +130,22 @@ export default function SignupScreen() {
                 style={styles.agreeRow}
                 onPress={() => setAgree(!agree)}
                 accessibilityRole="checkbox"
-                accessibilityLabel="Agree to Terms of Service and Privacy Policy"
+                accessibilityLabel={t('auth.signup.termsAriaLabel')}
                 accessibilityState={{ checked: agree }}
               >
                 <View style={[styles.box, agree && styles.boxOn]}>
                   {agree && <CosmicIcon name="check" color={colors.bgPrimary} size={12} strokeWidth={3} />}
                 </View>
                 <Text style={styles.agreeText}>
-                  I agree to the <Text style={{ color: colors.goldPrimary }}>Terms of Service</Text> and{' '}
-                  <Text style={{ color: colors.goldPrimary }}>Privacy Policy</Text>
+                  {t('auth.signup.termsBefore')}
+                  <Text style={{ color: colors.goldPrimary }}>{t('auth.signup.termsLinkA')}</Text>
+                  {t('auth.signup.termsAnd')}
+                  <Text style={{ color: colors.goldPrimary }}>{t('auth.signup.termsLinkB')}</Text>
                 </Text>
               </Pressable>
 
               <CosmicButton
-                title="Create Account"
+                title={t('auth.signup.primaryCta')}
                 onPress={onSubmit}
                 loading={loading}
                 disabled={!agree}
@@ -152,7 +156,7 @@ export default function SignupScreen() {
                 <>
                   <View style={styles.dividerRow}>
                     <View style={styles.divLine} />
-                    <Text style={styles.divText}>or sign up with</Text>
+                    <Text style={styles.divText}>{t('auth.signup.divider')}</Text>
                     <View style={styles.divLine} />
                   </View>
 
@@ -192,13 +196,13 @@ export default function SignupScreen() {
                 <Text style={styles.socialError}>{social.error.message}</Text>
               )}
 
-              <Text style={styles.privacy}>Your data is secure and never shared.</Text>
+              <Text style={styles.privacy}>{t('auth.signup.privacy')}</Text>
             </GlassCard>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
+              <Text style={styles.footerText}>{t('auth.signup.footerPrompt')}</Text>
               <Pressable onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.footerLink}>Login</Text>
+                <Text style={styles.footerLink}>{t('auth.signup.footerLink')}</Text>
               </Pressable>
             </View>
           </ScrollView>

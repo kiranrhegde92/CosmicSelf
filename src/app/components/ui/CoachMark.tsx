@@ -13,6 +13,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
@@ -45,6 +46,7 @@ export default function CoachMark({
   body,
   icon = 'sparkle',
 }: Props) {
+  const { t } = useTranslation();
   const seen = useAppStore((s) => s.coachMarksSeen);
   const markSeen = useAppStore((s) => s.markCoachSeen);
   const visible = enabled && !seen.includes(storageKey);
@@ -83,8 +85,8 @@ export default function CoachMark({
           <View style={styles.card}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.body}>{body}</Text>
-            <Pressable onPress={onDismiss} style={styles.cta} accessibilityLabel="Got it">
-              <Text style={styles.ctaText}>Got it</Text>
+            <Pressable onPress={onDismiss} style={styles.cta} accessibilityRole="button" accessibilityLabel={t('coachMark.gotIt')}>
+              <Text style={styles.ctaText}>{t('coachMark.gotIt')}</Text>
             </Pressable>
           </View>
         </Pressable>

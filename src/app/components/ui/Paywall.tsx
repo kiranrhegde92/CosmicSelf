@@ -9,6 +9,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 import GlassCard from './GlassCard';
 import CosmicIcon from './CosmicIcon';
@@ -27,20 +28,20 @@ type Props = {
   bullets?: string[];
 };
 
-const DEFAULT_BULLETS = [
-  'Unlimited AI chat with all six astrologers',
-  'Real-time synastry compatibility reports',
-  'Weekly cosmic video sessions',
-  'Detailed natal-chart deep-dives',
-];
-
 export default function Paywall({
   visible,
   onClose,
   feature,
-  bullets = DEFAULT_BULLETS,
+  bullets,
 }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
+  const resolvedBullets = bullets ?? [
+    t('paywall.default.bullet1'),
+    t('paywall.default.bullet2'),
+    t('paywall.default.bullet3'),
+    t('paywall.default.bullet4'),
+  ];
 
   React.useEffect(() => {
     if (visible) {
@@ -66,7 +67,8 @@ export default function Paywall({
         <Pressable style={styles.cardWrap} onPress={() => undefined /* swallow */}>
           <GlassCard borderGlow style={styles.card}>
             <Pressable
-              accessibilityLabel="Close"
+              accessibilityRole="button"
+              accessibilityLabel={t('paywall.close')}
               hitSlop={10}
               onPress={onClose}
               style={styles.close}
@@ -84,16 +86,14 @@ export default function Paywall({
               <CosmicIcon name="crown" color="#1A0F33" size={26} />
             </View>
 
-            <Text style={styles.kicker}>UNLOCK</Text>
+            <Text style={styles.kicker}>{t('paywall.kicker')}</Text>
             <Text style={styles.title}>
-              {feature ? `${feature} is a premium feature` : 'Step into the deeper cosmos'}
+              {feature ? t('paywall.titleFeature', { feature }) : t('paywall.titleDefault')}
             </Text>
-            <Text style={styles.subtitle}>
-              Pro Seeker and Cosmic Master plans unlock the full reading.
-            </Text>
+            <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
 
             <View style={styles.bulletList}>
-              {bullets.map((b) => (
+              {resolvedBullets.map((b) => (
                 <View key={b} style={styles.bulletRow}>
                   <View style={styles.bulletDot}>
                     <CosmicIcon
@@ -108,9 +108,9 @@ export default function Paywall({
               ))}
             </View>
 
-            <CosmicButton title="See Plans" iconRight="arrow-right" onPress={onUpgrade} />
-            <Pressable onPress={onClose} style={styles.notNow} accessibilityLabel="Maybe later">
-              <Text style={styles.notNowText}>Maybe later</Text>
+            <CosmicButton title={t('paywall.cta')} iconRight="arrow-right" onPress={onUpgrade} />
+            <Pressable onPress={onClose} style={styles.notNow} accessibilityRole="button" accessibilityLabel={t('paywall.later')}>
+              <Text style={styles.notNowText}>{t('paywall.later')}</Text>
             </Pressable>
           </GlassCard>
         </Pressable>

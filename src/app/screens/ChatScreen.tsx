@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   FadeInUp,
   useAnimatedStyle,
@@ -49,6 +50,7 @@ type Message = { id: string; from: 'user' | 'ai'; text: string };
 
 export default function ChatScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const mode = useOnboardingStore((s) => s.mode);
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
@@ -81,7 +83,7 @@ export default function ChatScreen() {
       onPress?: () => void;
     }> = [
       {
-        text: 'Copy',
+        text: t('chat.longPress.copy'),
         onPress: () => {
           Clipboard.setStringAsync(msg.text).catch(() => {});
           haptics.success();
@@ -90,11 +92,11 @@ export default function ChatScreen() {
     ];
     if (isAi) {
       buttons.push({
-        text: speakingId === msg.id ? 'Stop reading aloud' : 'Read aloud',
+        text: speakingId === msg.id ? t('chat.stopReading') : t('chat.readAloud'),
         onPress: () => onToggleTts(msg),
       });
       buttons.push({
-        text: 'Save as insight',
+        text: t('chat.longPress.save'),
         onPress: async () => {
           const id = await savedInsightsRepository.save({
             date: new Date().toLocaleDateString(undefined, {
@@ -110,15 +112,19 @@ export default function ChatScreen() {
           if (id) haptics.success();
           else if (!savedInsightsRepository.isLive) {
             Alert.alert(
-              'Sign in to save',
-              'Saved insights live in your account. Configure Firebase or sign in to keep this message.',
+              t('chat.saveError.signInTitle'),
+              t('chat.saveError.signInBody'),
             );
           }
         },
       });
     }
-    buttons.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert('Message', isAi ? msg.text.slice(0, 120) : 'Your message', buttons);
+    buttons.push({ text: t('common.cancel'), style: 'cancel' });
+    Alert.alert(
+      t('chat.longPress.title'),
+      isAi ? msg.text.slice(0, 120) : t('chat.longPress.fallback'),
+      buttons,
+    );
   };
 
   const onToggleTts = (msg: Message) => {
@@ -157,7 +163,7 @@ export default function ChatScreen() {
           {
             id: `verr-${Date.now()}`,
             from: 'ai',
-            text: 'I couldn\'t hear that. Please try again.',
+            text: t('chat.voice.transcribeError'),
           },
         ]);
       } finally {
@@ -177,7 +183,7 @@ export default function ChatScreen() {
         {
           id: `vmic-${Date.now()}`,
           from: 'ai',
-          text: 'Voice input needs microphone access — enable it in Settings to speak with me.',
+          text: t('chat.voice.permissionError'),
         },
       ]);
     }
@@ -317,12 +323,12 @@ export default function ChatScreen() {
 
   const onClearThread = () => {
     Alert.alert(
-      'Clear conversation?',
-      `This permanently deletes your thread with ${astrologer.name}. The astrologer will start fresh.`,
+      t('chat.clearAlert.title'),
+      t('chat.clearAlert.body', { name: astrologer.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('chat.clearAlert.confirm'),
           style: 'destructive',
           onPress: async () => {
             streamHandleRef.current?.cancel();
@@ -359,7 +365,7 @@ export default function ChatScreen() {
             onPress={() => navigation.goBack()}
             style={styles.iconChip}
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={t('chat.back')}
           >
             <CosmicIcon name="arrow-left" color={colors.white} size={18} />
           </Pressable>
@@ -379,7 +385,7 @@ export default function ChatScreen() {
               </View>
               <View style={styles.statusRow}>
                 <View style={styles.dotOnline} />
-                <Text style={styles.statusText}>Online</Text>
+                <Text style={styles.statusText}>{t('chat.online')}</Text>
               </View>
             </View>
           </Pressable>
@@ -387,7 +393,7 @@ export default function ChatScreen() {
             onPress={onClearThread}
             style={styles.iconChip}
             accessibilityRole="button"
-            accessibilityLabel="Clear conversation"
+            accessibilityLabel={t('chat.clear')}
           >
             <CosmicIcon name="orbit" color={colors.textSecondary} size={18} />
           </Pressable>
@@ -395,7 +401,7 @@ export default function ChatScreen() {
             onPress={() => navigation.navigate('VideoCall')}
             style={styles.iconChip}
             accessibilityRole="button"
-            accessibilityLabel="Start video call"
+            accessibilityLabel={t('chat.videoCall')}
           >
             <CosmicIcon name="video" color={colors.goldPrimary} size={18} />
           </Pressable>
@@ -429,7 +435,7 @@ export default function ChatScreen() {
               <TextInput
                 value={text}
                 onChangeText={setText}
-                placeholder="Ask anything..."
+                placeholder={t('chat.askPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 style={styles.input}
                 multiline
@@ -443,7 +449,7 @@ export default function ChatScreen() {
               ]}
               accessibilityRole="button"
               accessibilityLabel={
-                voiceState === 'recording' ? 'Stop recording' : 'Voice input'
+                voiceState === 'recording' ? t('chat.stopRecording') : t('chat.voiceInput')
               }
               accessibilityState={{
                 busy: voiceState === 'transcribing',
@@ -466,7 +472,7 @@ export default function ChatScreen() {
             </Pressable>
             <View style={styles.sendWrap}>
               <Animated.View pointerEvents="none" style={[styles.sendRipple, sendRippleStyle]} />
-              <Pressable style={styles.sendBtn} onPress={onSend} accessibilityRole="button" accessibilityLabel="Send">
+              <Pressable style={styles.sendBtn} onPress={onSend} accessibilityRole="button" accessibilityLabel={t('chat.send')}>
                 <LinearGradient
                   colors={['#FFD98A', '#F6C85F']}
                   start={{ x: 0, y: 0 }}
@@ -494,14 +500,15 @@ function Bubble({
   onTtsPress: () => void;
   onLongPress: () => void;
 }) {
+  const { t } = useTranslation();
   const isUser = msg.from === 'user';
   return (
     <Animated.View entering={FadeInUp.duration(300)} style={[styles.bubbleRow, isUser && { justifyContent: 'flex-end' }]}>
       <Pressable
         onLongPress={onLongPress}
         delayLongPress={350}
-        accessibilityLabel={isUser ? 'Your message' : 'Astrologer message'}
-        accessibilityHint="Long press for options"
+        accessibilityLabel={isUser ? t('chat.yourMessage') : t('chat.astrologerMessage')}
+        accessibilityHint={t('chat.longPress.title')}
         style={[
           styles.bubble,
           isUser ? styles.bubbleUser : styles.bubbleAi,
@@ -533,7 +540,7 @@ function Bubble({
           <Pressable
             onPress={onTtsPress}
             accessibilityRole="button"
-            accessibilityLabel={speaking ? 'Stop reading aloud' : 'Read aloud'}
+            accessibilityLabel={speaking ? t('chat.stopReading') : t('chat.readAloud')}
             accessibilityState={{ selected: speaking }}
             hitSlop={8}
             style={styles.ttsBtn}

@@ -7,6 +7,7 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -34,9 +35,11 @@ type Params = {
 
 export default function PlaceholderScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<{ Placeholder: Params }, 'Placeholder'>>();
+  const fallbackTitle = t('placeholder.fallbackTitle');
   const { title, subtitle, body, icon = 'sparkle', action } = route.params ?? {
-    title: 'Coming soon',
+    title: fallbackTitle,
   };
 
   const onAction = async () => {
@@ -60,8 +63,7 @@ export default function PlaceholderScreen() {
           <GlassCard style={styles.card}>
             <Text style={styles.heading}>{title}</Text>
             <Text style={styles.body}>
-              {body ??
-                'This corner of the cosmos is still under construction. Check back after the next celestial alignment.'}
+              {body ?? t('placeholder.fallbackBody')}
             </Text>
             {action && (
               <Pressable
@@ -74,7 +76,7 @@ export default function PlaceholderScreen() {
               </Pressable>
             )}
           </GlassCard>
-          <CosmicButton title="Got it" onPress={() => navigation.goBack()} variant="glass" />
+          <CosmicButton title={t('placeholder.gotIt')} onPress={() => navigation.goBack()} variant="glass" />
         </View>
       </SafeAreaView>
     </CosmicBackground>

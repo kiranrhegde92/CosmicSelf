@@ -44,11 +44,11 @@ export default function LoginScreen() {
   const onLogin = async () => {
     let valid = true;
     if (!email.trim()) {
-      setEmailError('Please enter your email or phone');
+      setEmailError(t('auth.login.errors.email'));
       valid = false;
     } else setEmailError(undefined);
     if (!password) {
-      setPwError('Please enter your password');
+      setPwError(t('auth.login.errors.password'));
       valid = false;
     } else setPwError(undefined);
     if (!valid) return;
@@ -87,7 +87,7 @@ export default function LoginScreen() {
 
             <GlassCard style={styles.card}>
               <CosmicInput
-                placeholder="Email / Phone"
+                placeholder={t('auth.login.emailPlaceholder')}
                 icon="mail"
                 value={email}
                 onChangeText={setEmail}
@@ -96,7 +96,7 @@ export default function LoginScreen() {
                 error={emailError}
               />
               <CosmicInput
-                placeholder="Password"
+                placeholder={t('auth.login.passwordPlaceholder')}
                 icon="lock"
                 value={password}
                 onChangeText={setPassword}

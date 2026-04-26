@@ -220,36 +220,33 @@ export default function SettingsScreen() {
         return;
       case 'data':
         return navigation.navigate('Placeholder', {
-          title: 'Data & Permissions',
-          subtitle: 'What we keep, what we don’t',
+          title: t('settingsExtras.data.title'),
+          subtitle: t('settingsExtras.data.subtitle'),
           icon: 'shield',
-          body:
-            'Your birth details, saved insights, and chat transcripts live in your private Firestore document, scoped by your account. Notifications are scheduled locally on this device. We never share your data with advertisers.',
+          body: t('settingsExtras.data.body'),
         });
       case 'export':
         return exportData();
       case 'faq':
         return navigation.navigate('Placeholder', {
-          title: 'FAQ',
-          subtitle: 'Cosmic questions answered',
+          title: t('settingsExtras.faq.title'),
+          subtitle: t('settingsExtras.faq.subtitle'),
           icon: 'info',
-          body:
-            'Common questions are getting their own home soon. Until then, the in-app astrologer can answer most things — try asking them directly.',
+          body: t('settingsExtras.faq.body'),
         });
       case 'contact':
         return navigation.navigate('Placeholder', {
-          title: 'Contact Support',
-          subtitle: 'We’re listening',
+          title: t('settingsExtras.contact.title'),
+          subtitle: t('settingsExtras.contact.subtitle'),
           icon: 'chat',
-          body:
-            'Email support@cosmicself.app and we’ll respond within two business days. Include the version number from this screen for faster help.',
+          body: t('settingsExtras.contact.body'),
           action: {
-            label: 'Open mail',
+            label: t('settingsExtras.contact.cta'),
             href:
               'mailto:support@cosmicself.app?subject=' +
-              encodeURIComponent('CosmicSelf support request') +
+              encodeURIComponent(t('settingsExtras.contact.mailSubject')) +
               '&body=' +
-              encodeURIComponent('Version: 1.0.0\n\nDescribe what happened:\n\n'),
+              encodeURIComponent(t('settingsExtras.contact.mailBody')),
           },
         });
     }

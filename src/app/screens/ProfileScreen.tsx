@@ -94,11 +94,10 @@ export default function ProfileScreen() {
                     if (!m.route) return;
                     if (m.key === 'privacy') {
                       navigation.navigate('Placeholder', {
-                        title: 'Privacy',
-                        subtitle: 'Your data, your stars',
+                        title: t('settingsExtras.privacy.title'),
+                        subtitle: t('settingsExtras.privacy.subtitle'),
                         icon: 'shield',
-                        body:
-                          'CosmicSelf stores only what you tell it: your birth details, saved insights, and chats with your astrologer. Everything is scoped to your account by Firestore Rules and never shared with third parties.',
+                        body: t('settingsExtras.privacy.body'),
                       });
                       return;
                     }

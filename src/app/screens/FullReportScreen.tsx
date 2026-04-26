@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -48,6 +49,7 @@ function buildUserMessage(report: CompatibilityReport): string {
 
 export default function FullReportScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const userBirth = useOnboardingStore((s) => getBirthInputFromStore(s));
   const partner = useOnboardingStore((s) => getActivePartner(s));
 
@@ -58,7 +60,7 @@ export default function FullReportScreen() {
 
   useEffect(() => {
     if (!userBirth || !partner) {
-      setError('Add your birth details and a partner to see this report.');
+      setError(t('fullReport.errorMissing'));
       setLoading(false);
       return;
     }
@@ -123,8 +125,8 @@ export default function FullReportScreen() {
     <CosmicBackground intensity="low" showParticles={false}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Full Synastry Report"
-          subtitle={partner?.name ? `You + ${partner.name}` : 'Cosmic deep-dive'}
+          title={t('fullReport.title')}
+          subtitle={partner?.name ? t('fullReport.subtitlePair', { name: partner.name }) : t('fullReport.subtitleDefault')}
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -156,7 +158,7 @@ export default function FullReportScreen() {
 
           {!loading && !error && (
             <CosmicButton
-              title="Ask astrologer about this"
+              title={t('fullReport.askCta')}
               icon="chat"
               onPress={onAskAstrologer}
               style={{ marginTop: spacing.lg }}

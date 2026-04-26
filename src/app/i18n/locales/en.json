@@ -10,7 +10,13 @@
       "footerPrompt": "New here? ",
       "footerLink": "Create account",
       "forgot": "Forgot Password?",
-      "divider": "or continue with"
+      "divider": "or continue with",
+      "emailPlaceholder": "Email / Phone",
+      "passwordPlaceholder": "Password",
+      "errors": {
+        "email": "Please enter your email or phone",
+        "password": "Please enter your password"
+      }
     },
     "signup": {
       "title": "Begin Your Journey",
@@ -20,7 +26,22 @@
       "footerLink": "Login",
       "privacy": "Your data is secure and never shared.",
       "divider": "or sign up with",
-      "terms": "I agree to the Terms of Service and Privacy Policy"
+      "terms": "I agree to the Terms of Service and Privacy Policy",
+      "termsAriaLabel": "Agree to Terms of Service and Privacy Policy",
+      "termsBefore": "I agree to the ",
+      "termsLinkA": "Terms of Service",
+      "termsAnd": " and ",
+      "termsLinkB": "Privacy Policy",
+      "namePlaceholder": "Full Name",
+      "emailPlaceholder": "Email / Phone",
+      "passwordPlaceholder": "Password",
+      "confirmPlaceholder": "Confirm Password",
+      "errors": {
+        "name": "Please enter your name",
+        "email": "Please enter your email or phone",
+        "password": "Password must be at least 6 characters",
+        "confirm": "Passwords do not match"
+      }
     }
   },
   "home": {
@@ -189,6 +210,109 @@
       "ask": "Ask astrologer about this",
       "askPrompt": "Tell me more about: {{headline}}",
       "remove": "Delete from collection"
+    }
+  },
+  "tabs": {
+    "home": "Home",
+    "chat": "Chat",
+    "birthChart": "Charts",
+    "dailyInsight": "Insights",
+    "profile": "Profile"
+  },
+  "offline": {
+    "banner": "You're offline — the stars are still listening, but updates may lag."
+  },
+  "paywall": {
+    "kicker": "UNLOCK",
+    "titleFeature": "{{feature}} is a premium feature",
+    "titleDefault": "Step into the deeper cosmos",
+    "subtitle": "Pro Seeker and Cosmic Master plans unlock the full reading.",
+    "cta": "See Plans",
+    "later": "Maybe later",
+    "close": "Close",
+    "default": {
+      "bullet1": "Unlimited AI chat with all six astrologers",
+      "bullet2": "Real-time synastry compatibility reports",
+      "bullet3": "Weekly cosmic video sessions",
+      "bullet4": "Detailed natal-chart deep-dives"
+    }
+  },
+  "coachMark": {
+    "gotIt": "Got it"
+  },
+  "fullReport": {
+    "title": "Full Synastry Report",
+    "subtitleDefault": "Cosmic deep-dive",
+    "subtitlePair": "You + {{name}}",
+    "errorMissing": "Add your birth details and a partner to see this report.",
+    "askCta": "Ask astrologer about this"
+  },
+  "placeholder": {
+    "fallbackTitle": "Coming soon",
+    "fallbackBody": "This corner of the cosmos is still under construction. Check back after the next celestial alignment.",
+    "gotIt": "Got it"
+  },
+  "settingsExtras": {
+    "language": {
+      "title": "Language",
+      "subtitle": "More tongues, more stars",
+      "body": "Localization is on the roadmap. CosmicSelf currently speaks English; Hindi, Spanish, and Portuguese are queued for the next release."
+    },
+    "data": {
+      "title": "Data & Permissions",
+      "subtitle": "What we keep, what we don't",
+      "body": "Your birth details, saved insights, and chat transcripts live in your private Firestore document, scoped by your account. Notifications are scheduled locally on this device. We never share your data with advertisers."
+    },
+    "faq": {
+      "title": "FAQ",
+      "subtitle": "Cosmic questions answered",
+      "body": "Common questions are getting their own home soon. Until then, the in-app astrologer can answer most things — try asking them directly."
+    },
+    "contact": {
+      "title": "Contact Support",
+      "subtitle": "We're listening",
+      "body": "Email support@cosmicself.app and we'll respond within two business days. Include the version number from this screen for faster help.",
+      "cta": "Open mail",
+      "mailSubject": "CosmicSelf support request",
+      "mailBody": "Version: 1.0.0\n\nDescribe what happened:\n\n"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "subtitle": "Your data, your stars",
+      "body": "CosmicSelf stores only what you tell it: your birth details, saved insights, and chats with your astrologer. Everything is scoped to your account by Firestore Rules and never shared with third parties."
+    }
+  },
+  "chat": {
+    "online": "Online",
+    "back": "Back",
+    "clear": "Clear conversation",
+    "videoCall": "Start video call",
+    "send": "Send",
+    "askPlaceholder": "Ask anything...",
+    "voiceInput": "Voice input",
+    "stopRecording": "Stop recording",
+    "yourMessage": "Your message",
+    "astrologerMessage": "Astrologer message",
+    "readAloud": "Read aloud",
+    "stopReading": "Stop reading aloud",
+    "longPress": {
+      "title": "Message",
+      "fallback": "Your message",
+      "copy": "Copy",
+      "save": "Save as insight"
+    },
+    "saveError": {
+      "signInTitle": "Sign in to save",
+      "signInBody": "Saved insights live in your account. Configure Firebase or sign in to keep this message."
+    },
+    "voice": {
+      "transcribeError": "I couldn't hear that. Please try again.",
+      "permissionError": "Voice input needs microphone access — enable it in Settings to speak with me."
+    },
+    "clearAlert": {
+      "title": "Clear conversation?",
+      "body": "This permanently deletes your thread with {{name}}. The astrologer will start fresh.",
+      "confirm": "Clear"
     }
   },
   "videoCall": {

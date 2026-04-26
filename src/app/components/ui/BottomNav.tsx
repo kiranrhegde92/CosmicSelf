@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -16,23 +17,25 @@ const ICONS: Record<string, IconName> = {
   Profile: 'profile',
 };
 
-const LABELS: Record<string, string> = {
-  Home: 'Home',
-  Chat: 'Chat',
-  BirthChart: 'Charts',
-  DailyInsight: 'Insights',
-  Profile: 'Profile',
+const LABEL_KEYS: Record<string, string> = {
+  Home: 'tabs.home',
+  Chat: 'tabs.chat',
+  BirthChart: 'tabs.birthChart',
+  DailyInsight: 'tabs.dailyInsight',
+  Profile: 'tabs.profile',
 };
 
 export default function BottomNav({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <View style={styles.bar}>
         {state.routes.map((route, i) => {
           const isFocused = state.index === i;
           const iconName = ICONS[route.name] ?? 'sparkle';
-          const label = LABELS[route.name] ?? route.name;
+          const labelKey = LABEL_KEYS[route.name];
+          const label = labelKey ? t(labelKey) : route.name;
 
           const onPress = () => {
             const event = navigation.emit({

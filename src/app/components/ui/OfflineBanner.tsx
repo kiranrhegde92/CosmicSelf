@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
@@ -20,6 +21,7 @@ import CosmicIcon from './CosmicIcon';
  */
 export default function OfflineBanner() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [offline, setOffline] = useState(false);
   const ty = useSharedValue(-60);
 
@@ -54,9 +56,7 @@ export default function OfflineBanner() {
     >
       <View style={styles.pill}>
         <CosmicIcon name="orbit" color={colors.goldBright} size={14} />
-        <Text style={styles.text}>
-          You're offline — the stars are still listening, but updates may lag.
-        </Text>
+        <Text style={styles.text}>{t('offline.banner')}</Text>
       </View>
     </Animated.View>
   );
