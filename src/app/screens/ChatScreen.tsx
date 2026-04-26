@@ -23,6 +23,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Clipboard from 'expo-clipboard';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import CosmicIcon from '../components/ui/CosmicIcon';
@@ -35,6 +36,7 @@ import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatServ
 import { analytics, Events } from '../services/analyticsService';
 import { chatRepository } from '../services/chatRepository';
 import { haptics } from '../services/hapticsService';
+import { savedInsightsRepository } from '../services/savedInsightsRepository';
 import { ttsService } from '../services/ttsService';
 import { voiceService } from '../services/voiceService';
 import { colors } from '../theme/colors';
@@ -68,6 +70,55 @@ export default function ChatScreen() {
       ttsService.stop().catch(() => {});
     };
   }, []);
+
+  const onLongPressMessage = (msg: Message) => {
+    haptics.tap();
+    const isAi = msg.from === 'ai';
+    const buttons: Array<{
+      text: string;
+      style?: 'cancel' | 'destructive' | 'default';
+      onPress?: () => void;
+    }> = [
+      {
+        text: 'Copy',
+        onPress: () => {
+          Clipboard.setStringAsync(msg.text).catch(() => {});
+          haptics.success();
+        },
+      },
+    ];
+    if (isAi) {
+      buttons.push({
+        text: speakingId === msg.id ? 'Stop reading aloud' : 'Read aloud',
+        onPress: () => onToggleTts(msg),
+      });
+      buttons.push({
+        text: 'Save as insight',
+        onPress: async () => {
+          const id = await savedInsightsRepository.save({
+            date: new Date().toLocaleDateString(undefined, {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            }),
+            zodiac: astrologer.name,
+            zodiacGlyph: '✦',
+            headline: msg.text.slice(0, 60),
+            body: msg.text,
+          });
+          if (id) haptics.success();
+          else if (!savedInsightsRepository.isLive) {
+            Alert.alert(
+              'Sign in to save',
+              'Saved insights live in your account. Configure Firebase or sign in to keep this message.',
+            );
+          }
+        },
+      });
+    }
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Message', isAi ? msg.text.slice(0, 120) : 'Your message', buttons);
+  };
 
   const onToggleTts = (msg: Message) => {
     if (msg.from !== 'ai') return;
@@ -295,18 +346,25 @@ export default function ChatScreen() {
           >
             <CosmicIcon name="arrow-left" color={colors.white} size={18} />
           </Pressable>
-          <View style={styles.headerCenter}>
+          <Pressable
+            style={styles.headerCenter}
+            onPress={() => navigation.navigate('EditAstrologer')}
+            accessibilityLabel={`Switch astrologer (currently ${astrologer.name})`}
+          >
             <View style={styles.headerAvatar}>
               <AstrologerAvatar visualKey={astrologer.visualKey} size={40} glow={false} />
             </View>
             <View>
-              <Text style={styles.headerName}>{astrologer.name}</Text>
+              <View style={styles.headerNameRow}>
+                <Text style={styles.headerName}>{astrologer.name}</Text>
+                <CosmicIcon name="chevron-down" color={colors.textMuted} size={14} />
+              </View>
               <View style={styles.statusRow}>
                 <View style={styles.dotOnline} />
                 <Text style={styles.statusText}>Online</Text>
               </View>
             </View>
-          </View>
+          </Pressable>
           <Pressable
             onPress={onClearThread}
             style={styles.iconChip}
@@ -338,6 +396,7 @@ export default function ChatScreen() {
                 msg={item}
                 speaking={speakingId === item.id}
                 onTtsPress={() => onToggleTts(item)}
+                onLongPress={() => onLongPressMessage(item)}
               />
             )}
             ListFooterComponent={typing ? <TypingBubble /> : null}
@@ -400,15 +459,21 @@ function Bubble({
   msg,
   speaking,
   onTtsPress,
+  onLongPress,
 }: {
   msg: Message;
   speaking: boolean;
   onTtsPress: () => void;
+  onLongPress: () => void;
 }) {
   const isUser = msg.from === 'user';
   return (
     <Animated.View entering={FadeInUp.duration(300)} style={[styles.bubbleRow, isUser && { justifyContent: 'flex-end' }]}>
-      <View
+      <Pressable
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        accessibilityLabel={isUser ? 'Your message' : 'Astrologer message'}
+        accessibilityHint="Long press for options"
         style={[
           styles.bubble,
           isUser ? styles.bubbleUser : styles.bubbleAi,
@@ -450,7 +515,7 @@ function Bubble({
             />
           </Pressable>
         )}
-      </View>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -551,6 +616,11 @@ const styles = StyleSheet.create({
   headerName: {
     ...typography.bodyStrong,
     color: colors.white,
+  },
+  headerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   statusRow: {
     flexDirection: 'row',

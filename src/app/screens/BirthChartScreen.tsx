@@ -34,6 +34,7 @@ export default function BirthChartScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [chart, setChart] = useState<ChartCardData | null>(null);
   const [natal, setNatal] = useState<NatalChart | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -44,11 +45,43 @@ export default function BirthChartScreen() {
       if (!active) return;
       setChart(c);
       setNatal(n);
+      setLoaded(true);
     });
     return () => {
       active = false;
     };
   }, []);
+
+  // No real natal chart computed = no birth data on file. Show a friendly
+  // empty state with a path to onboarding's edit screen rather than the
+  // misleading mock cards.
+  const noBirthData = loaded && natal === null;
+
+  if (noBirthData) {
+    return (
+      <CosmicBackground intensity="low" showZodiacWheel>
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          <ScreenHeader title="My Cosmic Chart" subtitle="Your planetary blueprint" />
+          <View style={styles.emptyWrap}>
+            <View style={styles.chartWrap}>
+              <BirthChartPreview size={240} chart={null} rotate={false} />
+            </View>
+            <Text style={styles.emptyTitle}>Add your birth details</Text>
+            <Text style={styles.emptyBody}>
+              Your chart unlocks once we know your birth date, time, and city.
+              Without them we can't place your Sun, Moon, or Ascendant.
+            </Text>
+            <CosmicButton
+              title="Set Birth Details"
+              icon="calendar"
+              onPress={() => navigation.navigate('EditBirthDetails')}
+              style={{ marginTop: spacing.lg }}
+            />
+          </View>
+        </SafeAreaView>
+      </CosmicBackground>
+    );
+  }
 
   return (
     <CosmicBackground intensity="low" showZodiacWheel>
@@ -134,6 +167,27 @@ const styles = StyleSheet.create({
   chartWrap: {
     alignItems: 'center',
     marginVertical: spacing.md,
+  },
+  emptyWrap: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 120,
+  },
+  emptyTitle: {
+    ...typography.section,
+    color: colors.white,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  emptyBody: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    lineHeight: 22,
+    maxWidth: 320,
   },
   grid: {
     flexDirection: 'row',
