@@ -1,42 +1,42 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { httpsCallable } from 'firebase/functions';
 
 import { env, features } from '../config/env';
 import { ASTROLOGERS } from '../data/astrologers';
 import { computeNatalChart, ZODIAC_GLYPHS } from './astroEngine';
+import { getFns } from './firebaseClient';
 import {
   getBirthInputFromStore,
   useOnboardingStore,
 } from '../store/onboardingStore';
 
 /*
- * SECURITY NOTE
- * -------------
- * Calling the Anthropic API directly from the app embeds the key in the bundle.
- * That's fine for prototyping, but BEFORE A PUBLIC RELEASE move this call to a
- * tiny backend proxy:
+ * Chat service has three modes, picked at runtime in this order:
  *
- *   1. Stand up an endpoint (Cloudflare Worker / Vercel / Supabase Edge Fn) that
- *      keeps ANTHROPIC_API_KEY in its env, and forwards { astrologerId, mode,
- *      messages } to /v1/messages.
- *   2. Replace the SDK call below with a fetch to that endpoint, authenticated
- *      with the user's Supabase JWT.
+ *   1. PRODUCTION — call the `astrologerChat` Cloud Function. The
+ *      ANTHROPIC_API_KEY is held server-side as a Functions secret.
+ *      Active when EXPO_PUBLIC_FIREBASE_* + EXPO_PUBLIC_FIREBASE_PROJECT_ID
+ *      are set AND no EXPO_PUBLIC_ANTHROPIC_API_KEY is present.
  *
- * Until then, the key is read from EXPO_PUBLIC_ANTHROPIC_API_KEY and the chat
- * service falls back to a curated mock if the key isn't configured.
+ *   2. DIRECT (DEV ONLY) — call Anthropic directly using a key in the
+ *      bundle. Convenient when iterating without redeploying Functions.
+ *      Active when EXPO_PUBLIC_ANTHROPIC_API_KEY is set; logs a warning.
+ *
+ *   3. MOCK — neither configured. Returns curated replies so the UI
+ *      keeps working in plain Expo Go without any backend.
  */
 
-let client: Anthropic | null = null;
+let directClient: Anthropic | null = null;
 
-function getClient() {
+function getDirectClient() {
   if (!features.liveChatDirect) return null;
-  if (!client) {
-    client = new Anthropic({
+  if (!directClient) {
+    directClient = new Anthropic({
       apiKey: env.anthropic.apiKey,
-      // RN runtimes set window/navigator and the SDK refuses to run otherwise.
       dangerouslyAllowBrowser: true,
     });
   }
-  return client;
+  return directClient;
 }
 
 const FALLBACK_REPLIES = [
@@ -63,7 +63,6 @@ function buildSystemPrompt(astrologerId?: string, mode?: 'serious' | 'fun') {
       ? 'Keep replies light, witty, and under 80 words. A touch of playful banter is welcome.'
       : 'Keep replies grounded, precise, and under 100 words. Lean traditional and reflective.';
 
-  // Personalize with the user's chart if available.
   const state = useOnboardingStore.getState();
   const input = getBirthInputFromStore(state);
   let chartSummary = '';
@@ -87,33 +86,55 @@ function buildSystemPrompt(astrologerId?: string, mode?: 'serious' | 'fun') {
     .join(' ');
 }
 
-async function liveSend(
+type CallableInput = {
+  message: string;
+  systemPrompt: string;
+  history: ChatMessage[];
+  model?: string;
+  maxTokens?: number;
+};
+
+type CallableOutput = {
+  reply: string;
+  usage?: { input: number; output: number };
+};
+
+async function sendViaFunctions(
   message: string,
   history: ChatMessage[],
-  astrologerId?: string,
-  mode?: 'serious' | 'fun',
+  systemPrompt: string,
 ): Promise<string> {
-  const a = getClient();
-  if (!a) throw new Error('Live chat is not configured');
+  const fns = getFns();
+  if (!fns) throw new Error('Firebase Functions client unavailable');
+  const callable = httpsCallable<CallableInput, CallableOutput>(fns, 'astrologerChat');
+  const res = await callable({
+    message,
+    systemPrompt,
+    history: history.slice(-10),
+    model: env.anthropic.model,
+    maxTokens: 512,
+  });
+  return res.data.reply || FALLBACK_REPLIES[0];
+}
 
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [
-    ...history.slice(-10),
-    { role: 'user', content: message },
-  ];
-
+async function sendDirect(
+  message: string,
+  history: ChatMessage[],
+  systemPrompt: string,
+): Promise<string> {
+  const a = getDirectClient();
+  if (!a) throw new Error('Direct Anthropic client unavailable');
   const response = await a.messages.create({
     model: env.anthropic.model || 'claude-haiku-4-5',
     max_tokens: 512,
-    system: buildSystemPrompt(astrologerId, mode),
-    messages,
+    system: systemPrompt,
+    messages: [...history.slice(-10), { role: 'user', content: message }],
   });
-
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map((b) => b.text)
     .join('\n')
     .trim();
-
   return text || FALLBACK_REPLIES[0];
 }
 
@@ -124,7 +145,8 @@ async function mockSend(astrologerId?: string): Promise<string> {
 }
 
 export const aiChatService = {
-  isLive: features.liveChatDirect,
+  /** "live" means a real model is reachable through *some* path. */
+  isLive: features.liveChatViaFunctions || features.liveChatDirect,
 
   async send(
     message: string,
@@ -134,14 +156,36 @@ export const aiChatService = {
       history?: ChatMessage[];
     } = {},
   ): Promise<string> {
-    if (features.liveChatDirect) {
+    const systemPrompt = buildSystemPrompt(options.astrologerId, options.mode);
+    const history = options.history ?? [];
+
+    // Prefer the Functions-backed path: server-side key, signed-in user,
+    // shared rate-limiting, etc. Direct mode is a dev shortcut.
+    if (features.liveChatViaFunctions) {
       try {
-        return await liveSend(message, options.history ?? [], options.astrologerId, options.mode);
+        return await sendViaFunctions(message, history, systemPrompt);
       } catch (e) {
-        // Surface a graceful fallback rather than a bare error message in the UI.
+        // If Functions isn't deployed yet but a direct key is available, fall
+        // through to that path; otherwise serve a graceful mock reply.
+        if (features.liveChatDirect) {
+          try {
+            return await sendDirect(message, history, systemPrompt);
+          } catch {
+            return mockSend(options.astrologerId);
+          }
+        }
         return mockSend(options.astrologerId);
       }
     }
+
+    if (features.liveChatDirect) {
+      try {
+        return await sendDirect(message, history, systemPrompt);
+      } catch {
+        return mockSend(options.astrologerId);
+      }
+    }
+
     return mockSend(options.astrologerId);
   },
 };

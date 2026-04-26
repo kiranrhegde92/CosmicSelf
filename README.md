@@ -224,60 +224,132 @@ To swap in real artwork later:
 
 ## Backend integrations
 
-The app is wired to graceful fallbacks: if you don't configure any of the
-optional providers below, the relevant feature uses curated mock data — the
-app still launches and every screen still works.
+CosmicSelf uses **Firebase** end-to-end:
+- **Firebase Auth** for email/password sign-in
+- **Firestore** for chat history and saved insights
+- **Cloud Functions** as the Anthropic proxy (key never ships in the app)
 
-Copy `.env.example` to `.env` and fill in the keys you have:
+The app is wired with graceful fallbacks — without any env vars it still
+launches and every screen still works on curated mock data.
+
+### 1. Set up your Firebase project
+
+```bash
+# One-time
+npm install -g firebase-tools
+firebase login
+firebase use --add        # pick your Firebase project, alias as 'default'
+```
+
+In the Firebase Console:
+- **Authentication → Sign-in method:** enable Email/Password
+- **Firestore Database:** create (Native mode, any region)
+
+### 2. Drop the web SDK config into `.env`
+
+Copy `.env.example` → `.env` and fill in the values from
+**Firebase Console → Project Settings → "Your apps" → SDK setup**:
 
 ```env
-# Supabase auth (email/password). Without these, login/signup accept anything.
-EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+EXPO_PUBLIC_FIREBASE_REGION=us-central1
+```
 
-# Anthropic chat. Without it, ChatScreen serves curated replies.
-EXPO_PUBLIC_ANTHROPIC_API_KEY=
-EXPO_PUBLIC_ANTHROPIC_MODEL=claude-haiku-4-5
+> Firebase web config is public by design — security comes from
+> Firestore Rules + Auth rules, not from hiding these values.
 
-# RevenueCat. Requires a custom dev build (`react-native-purchases`).
+### 3. Deploy Firestore Rules
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+The rules in `firestore.rules` enforce per-user access and lock down chat
+transcripts as immutable.
+
+### 4. Deploy the Anthropic proxy (Cloud Functions)
+
+```bash
+# Set your Anthropic key as a Functions secret (never goes in git):
+firebase functions:secrets:set ANTHROPIC_API_KEY
+
+# Build and deploy:
+cd functions && npm install && cd ..
+firebase deploy --only functions
+```
+
+The deployed callable function `astrologerChat`:
+- Requires the user to be signed in (`request.auth`)
+- Validates message length, history shape, model allowlist
+- Holds the Anthropic key as a Functions secret
+- Returns `{ reply, usage }`
+
+The client (`aiChatService`) automatically calls it when Firebase env vars
+are present. **For local iteration without redeploying Functions**, set
+`EXPO_PUBLIC_ANTHROPIC_API_KEY` and the client will hit Anthropic directly
+(dev-only path).
+
+### 5. Optional — RevenueCat
+
+```env
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
 ```
 
-> **Security:** keys here ship in the bundle. Move the Anthropic key to a
-> backend proxy (Cloudflare Worker / Supabase Edge Function / Vercel) before
-> a public release. `aiChatService.ts` has the security note inline.
+Requires `npx expo install react-native-purchases` and a custom dev build
+(`eas build --profile development`).
 
-### What's implemented
+### Repo layout for backend code
 
-- **Auth (`authService`)** — Supabase email/password sign-up and sign-in,
-  plus `restoreSession` on app boot via `useSessionSync`. Local Zustand
-  store stays in sync with `onAuthStateChange`.
+```
+firebase.json            # firestore + functions deploy config
+firestore.rules          # per-user access; transcripts are append-only
+firestore.indexes.json   # (empty for now)
+functions/
+├── src/index.ts         # astrologerChat callable function
+├── package.json
+└── tsconfig.json
+```
+
+### What's implemented in the app
+
+- **Auth (`authService`)** — Firebase email/password sign-up and sign-in,
+  with `restoreSession` waiting for the first `onAuthStateChanged` tick.
+  `useSessionSync` keeps the local Zustand store in lockstep.
 - **Birth chart (`astroEngine`)** — pure-JS Sun / Moon / Ascendant /
   dominant-planet calculator using `astronomy-engine` + the Meeus
-  ascendant formula. Inputs are taken from the persisted onboarding store
+  ascendant formula. Inputs come from the persisted onboarding store
   (date + time + lat/lon + tz offset).
 - **Geocoding (`geocodingService`)** — debounced city search against
-  Open-Meteo (no API key). The result populates the onboarding store with
-  real coordinates and timezone.
+  Open-Meteo (no API key). Populates the onboarding store with real
+  coordinates and timezone.
 - **Date picker** — native `DateTimePicker` (spinner on iOS, modal on
   Android), clamped to 1900..today, emitting ISO `YYYY-MM-DD`.
-- **AI chat (`aiChatService`)** — Claude (default `claude-haiku-4-5`) with
-  a per-astrologer / per-mode system prompt and the user's natal placements
-  woven in. Falls back to curated replies without a key.
+- **AI chat (`aiChatService`)** — Claude (default `claude-haiku-4-5`)
+  via the `astrologerChat` Cloud Function (production path) or directly
+  via the Anthropic SDK (dev path). Falls back to curated replies with
+  no backend.
+- **Chat history (`chatRepository`)** — every message is persisted under
+  `users/{uid}/threads/{astrologerId}/messages/`. Loads on screen mount,
+  appends fire-and-forget on send. Switching astrologers swaps threads.
 - **Daily horoscope** — `notificationsService.scheduleDailyHoroscope()`
-  schedules a recurring local notification at 8:00 AM. The Settings toggle
-  drives it; the bootstrap hook re-schedules on app start.
+  schedules a recurring local notification at 8:00 AM. Settings toggle
+  drives it; bootstrap hook re-schedules on app start.
 - **Subscriptions** — `paymentService` is feature-flagged. With keys + a
-  custom dev build, `react-native-purchases` is loaded lazily; without
-  them, the screen mocks success.
+  custom dev build, `react-native-purchases` loads lazily; without them,
+  the screen mocks success.
 
 ### EAS
 
 `eas.json` ships with three profiles: `development` (dev client),
 `preview` (internal install: APK on Android, simulator IPA on iOS),
-`production` (auto-incrementing version). Trigger the relevant cloud
-build with `eas build --profile <name> --platform ios|android`.
+`production` (auto-incrementing version). Trigger a cloud build with
+`eas build --profile <name> --platform ios|android`.
 
 ## License
 
