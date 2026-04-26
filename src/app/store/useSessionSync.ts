@@ -5,6 +5,7 @@ import { features } from '../config/env';
 import { authService } from '../services/authService';
 import { getFirebaseAuth } from '../services/firebaseClient';
 import { syncTierToFirestore } from '../services/entitlementService';
+import { startBirthMirror } from '../services/birthService';
 import { setSentryUser } from '../services/sentryService';
 import { useAuthStore } from './authStore';
 import { useEntitlementStore } from './entitlementStore';
@@ -35,12 +36,15 @@ export function useSessionSync(enabled: boolean) {
     })();
 
     const auth = getFirebaseAuth();
+    let stopBirthMirror: (() => void) | null = null;
     const unsub = auth
       ? onAuthStateChanged(auth, (user) => {
           const { login, logout } = useAuthStore.getState();
           if (!user) {
             logout();
             setSentryUser(null);
+            stopBirthMirror?.();
+            stopBirthMirror = null;
             return;
           }
           setSentryUser({ id: user.uid });
@@ -56,12 +60,18 @@ export function useSessionSync(enabled: boolean) {
           // Mirror locally-known tier into Firestore so the chat Function
           // can apply the correct quota immediately on first call.
           syncTierToFirestore(useEntitlementStore.getState().tier);
+          // Start mirroring birth details so server-side jobs (daily insight
+          // push, etc.) can read them. Re-subscribes per session to avoid
+          // leaking the listener across sign-out.
+          stopBirthMirror?.();
+          stopBirthMirror = startBirthMirror();
         })
       : null;
 
     return () => {
       cancelled = true;
       if (unsub) unsub();
+      stopBirthMirror?.();
     };
   }, [enabled]);
 }
