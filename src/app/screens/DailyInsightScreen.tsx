@@ -1,9 +1,16 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -28,6 +35,20 @@ export default function DailyInsightScreen() {
   const [insight, setInsight] = useState<DailyInsight | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Magic-circle confirmation on save — a gold ring expands and fades around
+  // the Save button when the insight lands in the user's collection.
+  const reduceMotion = useReducedMotion();
+  const saveBurst = useSharedValue(0);
+  useEffect(() => {
+    if (!saved || reduceMotion) return;
+    saveBurst.value = 0;
+    saveBurst.value = withTiming(1, { duration: 720, easing: Easing.out(Easing.cubic) });
+  }, [saved, reduceMotion, saveBurst]);
+  const saveBurstStyle = useAnimatedStyle(() => ({
+    opacity: 0.65 * (1 - saveBurst.value),
+    transform: [{ scale: 0.8 + saveBurst.value * 1.4 }],
+  }));
 
   // Re-fetch on every focus — the date / strongest transit moves through
   // the day so the saved-state shouldn't go stale across long sessions.
@@ -151,15 +172,18 @@ export default function DailyInsightScreen() {
             disabled={!insight}
             style={{ marginTop: spacing.lg }}
           />
-          <CosmicButton
-            title={saved ? t('daily.savedAck') : t('daily.save')}
-            icon={saved ? 'check' : 'star'}
-            variant="glass"
-            loading={saving}
-            disabled={!insight || saved}
-            onPress={onSave}
-            style={{ marginTop: spacing.sm }}
-          />
+          <View style={styles.saveWrap}>
+            <Animated.View pointerEvents="none" style={[styles.saveBurst, saveBurstStyle]} />
+            <CosmicButton
+              title={saved ? t('daily.savedAck') : t('daily.save')}
+              icon={saved ? 'check' : 'star'}
+              variant="glass"
+              loading={saving}
+              disabled={!insight || saved}
+              onPress={onSave}
+              style={{ marginTop: spacing.sm }}
+            />
+          </View>
           <CosmicButton
             title={t('daily.share')}
             icon="arrow-up"
@@ -178,6 +202,20 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: spacing.screenH,
     paddingBottom: 120,
+  },
+  saveWrap: {
+    position: 'relative',
+  },
+  saveBurst: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: spacing.sm,
+    bottom: 0,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: colors.goldBright,
+    backgroundColor: 'rgba(246,200,95,0.06)',
   },
   zodiacWrap: {
     alignItems: 'center',

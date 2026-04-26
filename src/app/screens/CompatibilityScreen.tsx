@@ -1,9 +1,18 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -171,6 +180,28 @@ function LiveReport({
   onFullReport: () => void;
 }) {
   const { t } = useTranslation();
+
+  // Heart-pulse on connection — the merge glyph beats twice when the live
+  // report first renders, signaling "the link is made". Reduce-motion users
+  // get a static glyph.
+  const pulse = useSharedValue(1);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    if (reduceMotion) return;
+    pulse.value = 1;
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.25, { duration: 320, easing: Easing.out(Easing.quad) }),
+        withTiming(1, { duration: 320, easing: Easing.in(Easing.quad) }),
+      ),
+      2,
+      false,
+    );
+  }, [pulse, reduceMotion, report.partnerA.label, report.partnerB.label]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
   return (
     <>
       <View style={styles.duo}>
@@ -179,9 +210,9 @@ function LiveReport({
           label={report.partnerA.label}
           sign={report.partnerA.sign}
         />
-        <View style={styles.merge}>
+        <Animated.View style={[styles.merge, pulseStyle]}>
           <Text style={styles.mergeText}>×</Text>
-        </View>
+        </Animated.View>
         <PartnerSlot
           glyph={report.partnerB.glyph}
           label={report.partnerB.label}

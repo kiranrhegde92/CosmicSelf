@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, {
   FadeInUp,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
@@ -297,7 +298,22 @@ export default function ChatScreen() {
     );
   };
 
-  const onSend = () => sendMessage(text);
+  // Send-button ripple: a single gold ring expands and fades on every tap.
+  const sendRipple = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
+
+  const onSend = () => {
+    if (!reduceMotion) {
+      sendRipple.value = 0;
+      sendRipple.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.quad) });
+    }
+    sendMessage(text);
+  };
+
+  const sendRippleStyle = useAnimatedStyle(() => ({
+    opacity: 0.55 * (1 - sendRipple.value),
+    transform: [{ scale: 1 + sendRipple.value * 1.6 }],
+  }));
 
   const onClearThread = () => {
     Alert.alert(
@@ -448,15 +464,18 @@ export default function ChatScreen() {
                 size={20}
               />
             </Pressable>
-            <Pressable style={styles.sendBtn} onPress={onSend} accessibilityRole="button" accessibilityLabel="Send">
-              <LinearGradient
-                colors={['#FFD98A', '#F6C85F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <CosmicIcon name="send" color="#1A0F33" size={18} />
-            </Pressable>
+            <View style={styles.sendWrap}>
+              <Animated.View pointerEvents="none" style={[styles.sendRipple, sendRippleStyle]} />
+              <Pressable style={styles.sendBtn} onPress={onSend} accessibilityRole="button" accessibilityLabel="Send">
+                <LinearGradient
+                  colors={['#FFD98A', '#F6C85F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <CosmicIcon name="send" color="#1A0F33" size={18} />
+              </Pressable>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -733,6 +752,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
+  },
+  sendWrap: {
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendRipple: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: colors.goldBright,
   },
   sendBtn: {
     width: 46,
