@@ -7,6 +7,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 
 import './src/app/i18n';
+import { initSentry, wrapApp } from './src/app/services/sentryService';
+
+// Initialize Sentry as early as possible — before the first render — so any
+// crash during boot is captured. No-op when EXPO_PUBLIC_SENTRY_DSN isn't set.
+initSentry();
 
 // Allow the layout to flip when the device locale is RTL (Arabic, Hebrew,
 // etc). We don't `forceRTL` — the user's device language drives direction.
@@ -36,7 +41,7 @@ import { analytics, Events } from './src/app/services/analyticsService';
 
 analytics.track(Events.AppOpened);
 
-export default function App() {
+function App() {
   const fontsReady = useBrandFonts();
 
   return (
@@ -57,3 +62,7 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+// wrapApp installs Sentry's error boundary + touch-event tracing when a DSN
+// is configured. No-op when Sentry isn't enabled.
+export default wrapApp(App);

@@ -46,6 +46,13 @@ export const env = {
   // Sign-in method -> Google (which creates the OAuth credentials in GCP).
   // Web client ID is enough to make Expo Go work; iOS/Android client IDs
   // unlock native EAS dev/prod builds.
+  sentry: {
+    /** Sentry DSN — empty string disables Sentry entirely. */
+    dsn: get('EXPO_PUBLIC_SENTRY_DSN'),
+    /** "production" | "staging" | "development" — tags every event. */
+    environment: get('EXPO_PUBLIC_SENTRY_ENV', 'development'),
+  },
+
   appCheck: {
     /**
      * Optional debug token for App Check during dev. Get one from Firebase
@@ -68,6 +75,7 @@ const firebaseReady = !!(env.firebase.apiKey && env.firebase.projectId && env.fi
 
 export const features = {
   firebase: firebaseReady,
+  sentry: !!env.sentry.dsn,
   liveChatViaFunctions: firebaseReady,
   liveChatDirect: !!env.anthropic.apiKey, // dev-only fallback
   revenueCat: !!(env.revenuecat.iosKey || env.revenuecat.androidKey),

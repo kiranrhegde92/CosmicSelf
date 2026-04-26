@@ -5,6 +5,7 @@ import { features } from '../config/env';
 import { authService } from '../services/authService';
 import { getFirebaseAuth } from '../services/firebaseClient';
 import { syncTierToFirestore } from '../services/entitlementService';
+import { setSentryUser } from '../services/sentryService';
 import { useAuthStore } from './authStore';
 import { useEntitlementStore } from './entitlementStore';
 
@@ -39,8 +40,10 @@ export function useSessionSync(enabled: boolean) {
           const { login, logout } = useAuthStore.getState();
           if (!user) {
             logout();
+            setSentryUser(null);
             return;
           }
+          setSentryUser({ id: user.uid });
           login({
             id: user.uid,
             email: user.email ?? '',
