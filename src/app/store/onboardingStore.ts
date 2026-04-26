@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type Mode = 'serious' | 'fun';
 
@@ -19,27 +21,40 @@ type OnboardingState = {
   reset: () => void;
 };
 
-export const useOnboardingStore = create<OnboardingState>((set) => ({
+const initialState = {
   birthDate: null,
   birthTime: null,
   birthLocation: null,
-  selectedAstrologerId: 'veda',
-  mode: 'serious',
+  selectedAstrologerId: 'veda' as string | null,
+  mode: 'serious' as Mode,
   hasOnboarded: false,
+};
 
-  setBirthDate: (d) => set({ birthDate: d }),
-  setBirthTime: (t) => set({ birthTime: t }),
-  setBirthLocation: (loc) => set({ birthLocation: loc }),
-  setAstrologer: (id) => set({ selectedAstrologerId: id }),
-  setMode: (m) => set({ mode: m }),
-  completeOnboarding: () => set({ hasOnboarded: true }),
-  reset: () =>
-    set({
-      birthDate: null,
-      birthTime: null,
-      birthLocation: null,
-      selectedAstrologerId: 'veda',
-      mode: 'serious',
-      hasOnboarded: false,
+export const useOnboardingStore = create<OnboardingState>()(
+  persist(
+    (set) => ({
+      ...initialState,
+
+      setBirthDate: (d) => set({ birthDate: d }),
+      setBirthTime: (t) => set({ birthTime: t }),
+      setBirthLocation: (loc) => set({ birthLocation: loc }),
+      setAstrologer: (id) => set({ selectedAstrologerId: id }),
+      setMode: (m) => set({ mode: m }),
+      completeOnboarding: () => set({ hasOnboarded: true }),
+      reset: () => set({ ...initialState }),
     }),
-}));
+    {
+      name: 'cosmicself.onboarding',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        birthDate: state.birthDate,
+        birthTime: state.birthTime,
+        birthLocation: state.birthLocation,
+        selectedAstrologerId: state.selectedAstrologerId,
+        mode: state.mode,
+        hasOnboarded: state.hasOnboarded,
+      }),
+      version: 1,
+    },
+  ),
+);

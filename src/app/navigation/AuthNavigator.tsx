@@ -10,9 +10,14 @@ import { AuthStackParamList } from './routes';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-export default function AuthNavigator() {
+type Props = {
+  initialRouteName?: keyof AuthStackParamList;
+};
+
+export default function AuthNavigator({ initialRouteName = 'Splash' }: Props) {
   return (
     <Stack.Navigator
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#080817' },
