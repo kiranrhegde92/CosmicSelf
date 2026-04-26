@@ -13,6 +13,7 @@ import CosmicIcon from '../components/ui/CosmicIcon';
 import AstrologerCarousel from '../components/astrologer/AstrologerCarousel';
 import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
+import { analytics, Events } from '../services/analyticsService';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
@@ -32,6 +33,7 @@ export default function AstrologerSelectionScreen() {
   const onContinue = () => {
     setAstrologer(selectedId);
     completeOnboarding();
+    analytics.track(Events.OnboardingCompleted, { astrologer: selectedId, mode });
     // RootNavigator will switch to MainNavigator automatically
   };
 

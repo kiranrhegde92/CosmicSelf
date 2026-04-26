@@ -24,6 +24,7 @@ import {
   type BirthLocation,
   type Partner,
 } from '../store/onboardingStore';
+import { analytics, Events } from '../services/analyticsService';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -54,6 +55,7 @@ export default function EditPartnerScreen() {
       birthTime: time,
       birthLocation: locationData,
     });
+    analytics.track(Events.PartnerAdded);
     navigation.goBack();
   };
 

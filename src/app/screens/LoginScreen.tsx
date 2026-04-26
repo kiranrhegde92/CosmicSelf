@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import GlassCard from '../components/ui/GlassCard';
@@ -22,11 +23,13 @@ import { spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
 import { AuthStackParamList } from '../navigation/routes';
 import { authService } from '../services/authService';
+import { analytics, Events } from '../services/analyticsService';
 import { useAuthStore } from '../store/authStore';
 import { useSocialAuth } from '../store/useSocialAuth';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const { t } = useTranslation();
   const login = useAuthStore((s) => s.login);
   const social = useSocialAuth({
     onSuccess: () => navigation.replace('BirthDetails'),
@@ -54,6 +57,8 @@ export default function LoginScreen() {
     try {
       const user = await authService.login(email, password);
       login(user);
+      analytics.identify(user.id, { email: user.email });
+      analytics.track(Events.Login, { method: 'email' });
       navigation.replace('BirthDetails');
     } finally {
       setLoading(false);
@@ -75,9 +80,9 @@ export default function LoginScreen() {
             <View style={styles.headerOrnament}>
               <CosmicIcon name="sparkle" color={colors.goldPrimary} size={20} />
             </View>
-            <Text style={[typography.hero, styles.title]}>Welcome Back</Text>
+            <Text style={[typography.hero, styles.title]}>{t('auth.login.title')}</Text>
             <Text style={[typography.subtitle, styles.subtitle]}>
-              Continue your cosmic journey
+              {t('auth.login.subtitle')}
             </Text>
 
             <GlassCard style={styles.card}>
@@ -101,11 +106,11 @@ export default function LoginScreen() {
               />
 
               <Pressable style={styles.forgot}>
-                <Text style={styles.forgotText}>Forgot Password?</Text>
+                <Text style={styles.forgotText}>{t('auth.login.forgot')}</Text>
               </Pressable>
 
               <CosmicButton
-                title="Login"
+                title={t('auth.login.primaryCta')}
                 onPress={onLogin}
                 loading={loading}
                 style={{ marginTop: spacing.sm }}
@@ -113,7 +118,7 @@ export default function LoginScreen() {
 
               <View style={styles.dividerRow}>
                 <View style={styles.divLine} />
-                <Text style={styles.divText}>or continue with</Text>
+                <Text style={styles.divText}>{t('auth.login.divider')}</Text>
                 <View style={styles.divLine} />
               </View>
 
@@ -151,9 +156,9 @@ export default function LoginScreen() {
             </GlassCard>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>New here? </Text>
+              <Text style={styles.footerText}>{t('auth.login.footerPrompt')}</Text>
               <Pressable onPress={() => navigation.navigate('Signup')}>
-                <Text style={styles.footerLink}>Create account</Text>
+                <Text style={styles.footerLink}>{t('auth.login.footerLink')}</Text>
               </Pressable>
             </View>
           </ScrollView>

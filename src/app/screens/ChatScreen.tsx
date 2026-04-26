@@ -31,6 +31,7 @@ import { sampleMessages } from '../data/mockInsights';
 import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatService';
+import { analytics, Events } from '../services/analyticsService';
 import { chatRepository } from '../services/chatRepository';
 import { voiceService } from '../services/voiceService';
 import { colors } from '../theme/colors';
@@ -90,6 +91,7 @@ export default function ChatScreen() {
     try {
       await voiceService.start();
       setVoiceState('recording');
+      analytics.track(Events.ChatVoiceUsed, { astrologer: astrologerId });
     } catch {
       setMessages((m) => [
         ...m,
@@ -141,6 +143,11 @@ export default function ChatScreen() {
     setTyping(true);
 
     chatRepository.appendMessage(astrologerId, { from: 'user', text: trimmed });
+    analytics.track(Events.ChatMessageSent, {
+      astrologer: astrologerId,
+      mode,
+      length: trimmed.length,
+    });
 
     const history: ChatMessage[] = nextMessages.map((m) => ({
       role: m.from === 'user' ? 'user' : 'assistant',

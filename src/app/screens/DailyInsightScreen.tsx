@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { astrologyService } from '../services/astrologyService';
+import { analytics, Events } from '../services/analyticsService';
 import type { DailyInsight } from '../services/dailyInsightEngine';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
 import { MainStackParamList } from '../navigation/routes';
@@ -48,6 +49,7 @@ export default function DailyInsightScreen() {
     setSaving(false);
     if (id) {
       setSaved(true);
+      analytics.track(Events.InsightSaved, { zodiac: insight?.zodiac ?? null });
     } else if (!savedInsightsRepository.isLive) {
       Alert.alert(
         'Sign in to save',

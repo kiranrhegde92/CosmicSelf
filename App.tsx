@@ -5,12 +5,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 
+import './src/app/i18n';
 import RootNavigator from './src/app/navigation/RootNavigator';
 import { navigationTheme } from './src/app/theme/navigation';
 import ErrorBoundary from './src/app/components/ui/ErrorBoundary';
 import OfflineBanner from './src/app/components/ui/OfflineBanner';
 import SplashView from './src/app/components/cosmic/SplashView';
 import { useBrandFonts } from './src/app/theme/useBrandFonts';
+import { analytics, Events } from './src/app/services/analyticsService';
+
+analytics.track(Events.AppOpened);
 
 export default function App() {
   const fontsReady = useBrandFonts();

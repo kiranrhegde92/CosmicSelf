@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -45,6 +46,7 @@ type Section = {
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const themeMode = useAppStore((s) => s.themeMode);
   const setThemeMode = useAppStore((s) => s.setThemeMode);
 
@@ -226,7 +228,7 @@ export default function SettingsScreen() {
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Settings"
+          title={t('settings.title')}
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -272,7 +274,7 @@ export default function SettingsScreen() {
               </GlassCard>
             </View>
           ))}
-          <Text style={styles.version}>CosmicSelf v1.0.0</Text>
+          <Text style={styles.version}>{t('settings.version')}</Text>
         </ScrollView>
       </SafeAreaView>
     </CosmicBackground>

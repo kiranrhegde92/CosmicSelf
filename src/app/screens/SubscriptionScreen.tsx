@@ -16,6 +16,7 @@ import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { paymentService } from '../services/paymentService';
+import { analytics, Events } from '../services/analyticsService';
 import { MainStackParamList } from '../navigation/routes';
 
 export default function SubscriptionScreen() {
@@ -26,7 +27,13 @@ export default function SubscriptionScreen() {
   const onContinue = async () => {
     setLoading(true);
     try {
-      await paymentService.startCheckout(selected);
+      const result = await paymentService.startCheckout(selected);
+      if (result.ok) {
+        analytics.track(Events.SubscriptionStarted, {
+          plan: selected,
+          tier: result.tier ?? null,
+        });
+      }
     } finally {
       setLoading(false);
     }

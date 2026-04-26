@@ -8,6 +8,7 @@ import Animated, {
   withRepeat,
   Easing,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export default function SplashView({ animate = true }: Props) {
+  const { t } = useTranslation();
   const wheelOpacity = useSharedValue(animate ? 0 : 1);
   const wheelScale = useSharedValue(animate ? 0.7 : 1);
   const titleOpacity = useSharedValue(animate ? 0 : 1);
@@ -63,7 +65,7 @@ export default function SplashView({ animate = true }: Props) {
           <Text style={[typography.hero, styles.title]}>CosmicSelf</Text>
         </Animated.View>
         <Animated.Text style={[typography.subtitle, styles.tagline, taglineStyle]}>
-          Align with your universe
+          {t('splash.tagline')}
         </Animated.Text>
       </View>
     </CosmicBackground>

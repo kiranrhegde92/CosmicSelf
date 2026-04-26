@@ -1,0 +1,60 @@
+{
+  "splash": {
+    "tagline": "Align with your universe"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Continue your cosmic journey",
+      "primaryCta": "Login",
+      "footerPrompt": "New here? ",
+      "footerLink": "Create account",
+      "forgot": "Forgot Password?",
+      "divider": "or continue with"
+    },
+    "signup": {
+      "title": "Begin Your Journey",
+      "subtitle": "The stars are waiting for you",
+      "primaryCta": "Create Account",
+      "footerPrompt": "Already have an account? ",
+      "footerLink": "Login",
+      "privacy": "Your data is secure and never shared.",
+      "divider": "or sign up with",
+      "terms": "I agree to the Terms of Service and Privacy Policy"
+    }
+  },
+  "home": {
+    "kicker": "Welcome to your",
+    "title": "Astrologer's Chamber",
+    "subtitle": "Ask. Discover. Align.",
+    "greeting": {
+      "morning": "Good Morning",
+      "afternoon": "Good Afternoon",
+      "evening": "Good Evening"
+    },
+    "alignment": "Your stars are aligned today",
+    "askPlaceholder": "Ask the stars..."
+  },
+  "settings": {
+    "title": "Settings",
+    "version": "CosmicSelf v1.0.0",
+    "section": {
+      "account": "Account",
+      "notifications": "Notifications",
+      "astrologer": "Astrologer Preferences",
+      "theme": "Theme",
+      "privacy": "Privacy",
+      "subscription": "Subscription",
+      "help": "Help"
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "back": "Back",
+    "loading": "Loading...",
+    "tryAgain": "Try again",
+    "comingSoon": "Coming soon"
+  }
+}

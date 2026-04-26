@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import GlassCard from './GlassCard';
 import CosmicIcon from './CosmicIcon';
 import CosmicButton from './CosmicButton';
+import { analytics, Events } from '../../services/analyticsService';
 import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -39,6 +40,10 @@ export default function Paywall({
   bullets = DEFAULT_BULLETS,
 }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+
+  React.useEffect(() => {
+    if (visible) analytics.track(Events.PaywallShown, { feature: feature ?? 'general' });
+  }, [visible, feature]);
 
   const onUpgrade = () => {
     onClose();

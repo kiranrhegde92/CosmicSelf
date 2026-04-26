@@ -22,6 +22,7 @@ import { spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
 import { AuthStackParamList } from '../navigation/routes';
 import { authService } from '../services/authService';
+import { analytics, Events } from '../services/analyticsService';
 import { useAuthStore } from '../store/authStore';
 import { useSocialAuth } from '../store/useSocialAuth';
 
@@ -59,6 +60,8 @@ export default function SignupScreen() {
     try {
       const user = await authService.signup(name, email, password);
       signup(user);
+      analytics.identify(user.id, { email: user.email });
+      analytics.track(Events.Signup, { method: 'email' });
       navigation.replace('BirthDetails');
     } finally {
       setLoading(false);
