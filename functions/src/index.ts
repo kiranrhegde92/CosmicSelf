@@ -79,6 +79,65 @@ function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tier quotas.                                                               */
+/*                                                                            */
+/* Daily chat-call caps by tier. Read with `getDailyCap(tier)`.               */
+/*                                                                            */
+/* Tier source today: users/{uid}/profile/entitlement.tier (the client writes */
+/* this when entitlement changes). When RevenueCat lands, swap to a Custom    */
+/* Auth Claim set by the RC webhook so the tier is signed into the ID token  */
+/* and clients can't lie. Until then this is best-effort — Firestore Rules    */
+/* still scope every write to the owning user, so the worst case is a user   */
+/* over-claiming their own tier.                                              */
+/* -------------------------------------------------------------------------- */
+
+type Tier = 'free' | 'pro' | 'master';
+
+const DAILY_CHAT_CAP: Record<Tier, number> = {
+  free: 20,
+  pro: 200,
+  master: Number.POSITIVE_INFINITY,
+};
+
+async function getTier(uid: string): Promise<Tier> {
+  try {
+    const snap = await admin
+      .firestore()
+      .doc(`users/${uid}/profile/entitlement`)
+      .get();
+    const tier = (snap.data()?.tier ?? 'free') as Tier;
+    return tier === 'pro' || tier === 'master' ? tier : 'free';
+  } catch {
+    return 'free';
+  }
+}
+
+async function getTodayChatCalls(uid: string): Promise<number> {
+  try {
+    const snap = await admin
+      .firestore()
+      .doc(`users/${uid}/usage/${todayKey()}`)
+      .get();
+    return Number(snap.data()?.chatCalls ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function enforceQuota(uid: string): Promise<void> {
+  const [tier, used] = await Promise.all([getTier(uid), getTodayChatCalls(uid)]);
+  const cap = DAILY_CHAT_CAP[tier];
+  if (used >= cap) {
+    throw new HttpsError(
+      'resource-exhausted',
+      tier === 'free'
+        ? 'Daily limit reached on the free tier. Upgrade for more.'
+        : 'Daily limit reached. Try again tomorrow.',
+    );
+  }
+}
+
 async function logUsage(uid: string, delta: UsageDelta): Promise<void> {
   try {
     const db = admin.firestore();
@@ -198,6 +257,8 @@ export const astrologerChat = onCall(
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
     const uid = request.auth.uid;
 
+    await enforceQuota(uid);
+
     try {
       const response = await client.messages.create({
         model: parsed.model,
@@ -293,6 +354,19 @@ export const astrologerChatStream = onRequest(
       parsed = validatePayload(req.body);
     } catch (err) {
       res.status(400).json({ error: (err as Error).message });
+      return;
+    }
+
+    try {
+      await enforceQuota(uid);
+    } catch (err) {
+      const e = err as HttpsError & { code?: string };
+      // Pre-stream quota errors are returned as JSON so the client doesn't
+      // have to parse SSE just to learn it's rate-limited.
+      res.status(429).json({
+        error: e.message ?? 'Daily limit reached.',
+        code: 'rate_limited',
+      });
       return;
     }
 
