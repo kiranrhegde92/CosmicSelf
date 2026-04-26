@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -8,20 +7,43 @@ import { features } from '../config/env';
 import { astrologyService } from './astrologyService';
 import { getDb, getFirebaseAuth } from './firebaseClient';
 
+/**
+ * Expo Go on Android no longer supports the `expo-notifications` push API
+ * since SDK 53 — even importing the module loads a side-effect file that
+ * calls `addPushTokenListener` at top level and throws.
+ *
+ * To survive booting in Expo Go on Android we conditionally `require()`
+ * the module instead of `import`-ing it. Static imports are evaluated
+ * eagerly; conditional require lets us skip the side-effect entirely.
+ *
+ * Local notifications still work in standalone / dev-client builds. The
+ * only loss in Expo Go is the test-push button + the daily-push pipeline
+ * (which needs a real device token anyway).
+ */
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+const PUSH_DISABLED = isExpoGo && Platform.OS === 'android';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Notifications: any = null;
+if (!PUSH_DISABLED) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
+
 const DAILY_HOROSCOPE_ID = 'cosmicself.daily-horoscope';
 const DEFAULT_BODY = 'The stars have new guidance for you. Tap to read.';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
 async function ensurePermission(): Promise<boolean> {
+  if (!Notifications) return false;
   const existing = await Notifications.getPermissionsAsync();
   if (existing.status === 'granted') return true;
   if (!existing.canAskAgain) return false;
@@ -30,7 +52,7 @@ async function ensurePermission(): Promise<boolean> {
 }
 
 async function ensureChannel() {
-  if (Platform.OS !== 'android') return;
+  if (!Notifications || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('cosmic-daily', {
     name: 'Daily Cosmic Insight',
     importance: Notifications.AndroidImportance.DEFAULT,
@@ -40,14 +62,27 @@ async function ensureChannel() {
 }
 
 export const notificationsService = {
+  /** True when the runtime supports any notification API (any flavor). */
+  get isAvailable(): boolean {
+    return Notifications !== null;
+  },
+
+  /** True specifically for the remote / push-token API path. */
+  get isPushAvailable(): boolean {
+    return Notifications !== null && Device.isDevice;
+  },
+
   /**
    * Schedule the daily horoscope to fire at the given local hour:minute.
    * The body uses the user's *current* strongest transit when birth data is
    * available — re-running this on app start refreshes it. (For
    * truly day-of-content the right move is a server-driven push; this is
    * a strong v1.)
+   *
+   * No-op in Expo Go on Android.
    */
   async scheduleDailyHoroscope(hour = 8, minute = 0) {
+    if (!Notifications) return false;
     const granted = await ensurePermission();
     if (!granted) return false;
     await ensureChannel();
@@ -68,12 +103,13 @@ export const notificationsService = {
         hour,
         minute,
         repeats: true,
-      } as Notifications.NotificationTriggerInput,
+      },
     });
     return true;
   },
 
   async cancelDailyHoroscope() {
+    if (!Notifications) return;
     try {
       await Notifications.cancelScheduledNotificationAsync(DAILY_HOROSCOPE_ID);
     } catch {
@@ -82,6 +118,7 @@ export const notificationsService = {
   },
 
   async getScheduled() {
+    if (!Notifications) return [];
     return Notifications.getAllScheduledNotificationsAsync();
   },
 
@@ -92,9 +129,10 @@ export const notificationsService = {
    *
    * Safe to call multiple times — Expo returns a stable token per device,
    * and we re-write only when it changes. Returns the token (or null on
-   * failure / simulator / no Firebase / no permission).
+   * failure / simulator / no Firebase / no permission / Expo Go on Android).
    */
   async registerPushToken(): Promise<string | null> {
+    if (!Notifications) return null; // Expo Go on Android — push is unsupported
     if (!Device.isDevice) return null; // simulator can't get a real token
     const granted = await ensurePermission();
     if (!granted) return null;
