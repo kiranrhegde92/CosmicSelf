@@ -32,6 +32,7 @@ import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatService';
 import { chatRepository } from '../services/chatRepository';
+import { voiceService } from '../services/voiceService';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -50,15 +51,56 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
   const listRef = useRef<FlatList<Message>>(null);
   const streamHandleRef = useRef<StreamHandle | null>(null);
 
-  // Cancel any in-flight stream when the screen unmounts (e.g. user nav'd away).
+  // Cancel any in-flight stream / recording when the screen unmounts.
   useEffect(() => {
     return () => {
       streamHandleRef.current?.cancel();
+      voiceService.cancel().catch(() => {});
     };
   }, []);
+
+  const onMicPress = async () => {
+    if (voiceState === 'recording') {
+      setVoiceState('transcribing');
+      try {
+        const transcribed = await voiceService.stopAndTranscribe();
+        if (transcribed) {
+          setText((prev) => (prev.trim() ? `${prev.trim()} ${transcribed}` : transcribed));
+        }
+      } catch {
+        // Errors land in the chat as a calm message rather than an alert.
+        setMessages((m) => [
+          ...m,
+          {
+            id: `verr-${Date.now()}`,
+            from: 'ai',
+            text: 'I couldn\'t hear that. Please try again.',
+          },
+        ]);
+      } finally {
+        setVoiceState('idle');
+      }
+      return;
+    }
+    if (voiceState !== 'idle') return;
+    try {
+      await voiceService.start();
+      setVoiceState('recording');
+    } catch {
+      setMessages((m) => [
+        ...m,
+        {
+          id: `vmic-${Date.now()}`,
+          from: 'ai',
+          text: 'Voice input needs microphone access — enable it in Settings to speak with me.',
+        },
+      ]);
+    }
+  };
 
   const scrollDown = () => {
     requestAnimationFrame(() => {
@@ -227,8 +269,28 @@ export default function ChatScreen() {
                 onSubmitEditing={onSend}
               />
             </View>
-            <Pressable style={styles.iconBtn} accessibilityLabel="Voice input">
-              <CosmicIcon name="mic" color={colors.textSecondary} size={20} />
+            <Pressable
+              style={[
+                styles.iconBtn,
+                voiceState === 'recording' && styles.iconBtnRecording,
+              ]}
+              accessibilityLabel={
+                voiceState === 'recording' ? 'Stop recording' : 'Voice input'
+              }
+              onPress={onMicPress}
+              disabled={voiceState === 'transcribing'}
+            >
+              <CosmicIcon
+                name={voiceState === 'recording' ? 'mic-off' : 'mic'}
+                color={
+                  voiceState === 'recording'
+                    ? '#FF6B6B'
+                    : voiceState === 'transcribing'
+                      ? colors.goldPrimary
+                      : colors.textSecondary
+                }
+                size={20}
+              />
             </Pressable>
             <Pressable style={styles.sendBtn} onPress={onSend} accessibilityLabel="Send">
               <LinearGradient
@@ -461,6 +523,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,18,41,0.85)',
     borderWidth: 1,
     borderColor: 'rgba(246,200,95,0.25)',
+  },
+  iconBtnRecording: {
+    backgroundColor: 'rgba(255,107,107,0.12)',
+    borderColor: '#FF6B6B',
+    shadowColor: '#FF6B6B',
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
   },
   sendBtn: {
     width: 46,
