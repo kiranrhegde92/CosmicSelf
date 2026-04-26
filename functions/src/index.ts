@@ -57,6 +57,101 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.min(Math.max(n, lo), hi);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Token usage logging.                                                       */
+/*                                                                            */
+/* Writes one rolling document per user per day at:                           */
+/*   users/{uid}/usage/{YYYY-MM-DD}                                           */
+/* with monotonically incremented counters. We can later sum these per user   */
+/* (cost attribution), per day (rate trend), or roll into BigQuery for       */
+/* dashboards. Failure here is non-fatal — we still return the chat reply.    */
+/* -------------------------------------------------------------------------- */
+
+type UsageDelta = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+  model: string;
+};
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function logUsage(uid: string, delta: UsageDelta): Promise<void> {
+  try {
+    const db = admin.firestore();
+    const ref = db.doc(`users/${uid}/usage/${todayKey()}`);
+    await ref.set(
+      {
+        date: todayKey(),
+        chatCalls: admin.firestore.FieldValue.increment(1),
+        inputTokens: admin.firestore.FieldValue.increment(delta.inputTokens),
+        outputTokens: admin.firestore.FieldValue.increment(delta.outputTokens),
+        cacheReadTokens: admin.firestore.FieldValue.increment(delta.cacheReadTokens ?? 0),
+        cacheCreationTokens: admin.firestore.FieldValue.increment(
+          delta.cacheCreationTokens ?? 0,
+        ),
+        lastModel: delta.model,
+        lastAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    // Logging is best-effort; never fail the chat because of it.
+    console.warn('logUsage failed', { uid, err });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Prompt caching.                                                            */
+/*                                                                            */
+/* Anthropic returns a 90% input-token discount for cached blocks. We mark    */
+/* the system prompt as cacheable (the largest stable block per astrologer)   */
+/* and, when the history is long enough to be worth caching, we stamp a       */
+/* cache_control on the last assistant turn so the chat continuation reuses   */
+/* the prior context cheaply. Without explicit markers, the SDK only marks    */
+/* tools — not what we want here.                                             */
+/* -------------------------------------------------------------------------- */
+
+function buildSystemBlocks(systemPrompt: string): Anthropic.TextBlockParam[] | undefined {
+  if (!systemPrompt) return undefined;
+  return [
+    {
+      type: 'text',
+      text: systemPrompt,
+      cache_control: { type: 'ephemeral' },
+    },
+  ];
+}
+
+const HISTORY_CACHE_MIN_TURNS = 4;
+
+function buildMessages(
+  history: ChatMessage[],
+  message: string,
+): Anthropic.MessageParam[] {
+  const out: Anthropic.MessageParam[] = history.map((m, idx) => {
+    const isLast = idx === history.length - 1;
+    if (isLast && history.length >= HISTORY_CACHE_MIN_TURNS) {
+      return {
+        role: m.role,
+        content: [
+          {
+            type: 'text',
+            text: m.content,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+  out.push({ role: 'user', content: message });
+  return out;
+}
+
 function validatePayload(raw: unknown): {
   message: string;
   systemPrompt: string;
@@ -101,13 +196,14 @@ export const astrologerChat = onCall(
     }
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+    const uid = request.auth.uid;
 
     try {
       const response = await client.messages.create({
         model: parsed.model,
         max_tokens: parsed.maxTokens,
-        system: parsed.systemPrompt || undefined,
-        messages: [...parsed.history, { role: 'user', content: parsed.message }],
+        system: buildSystemBlocks(parsed.systemPrompt),
+        messages: buildMessages(parsed.history, parsed.message),
       });
 
       const text = response.content
@@ -116,11 +212,26 @@ export const astrologerChat = onCall(
         .join('\n')
         .trim();
 
+      const usage = response.usage as Anthropic.Usage & {
+        cache_read_input_tokens?: number | null;
+        cache_creation_input_tokens?: number | null;
+      };
+
+      await logUsage(uid, {
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+        cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+        cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
+        model: parsed.model,
+      });
+
       return {
         reply: text,
         usage: {
-          input: response.usage.input_tokens,
-          output: response.usage.output_tokens,
+          input: usage.input_tokens,
+          output: usage.output_tokens,
+          cacheRead: usage.cache_read_input_tokens ?? 0,
+          cacheCreation: usage.cache_creation_input_tokens ?? 0,
         },
       };
     } catch (err) {
@@ -168,8 +279,10 @@ export const astrologerChatStream = onRequest(
       return;
     }
 
+    let uid: string;
     try {
-      await admin.auth().verifyIdToken(token);
+      const decoded = await admin.auth().verifyIdToken(token);
+      uid = decoded.uid;
     } catch {
       res.status(401).json({ error: 'Invalid auth token' });
       return;
@@ -200,8 +313,8 @@ export const astrologerChatStream = onRequest(
       const stream = client.messages.stream({
         model: parsed.model,
         max_tokens: parsed.maxTokens,
-        system: parsed.systemPrompt || undefined,
-        messages: [...parsed.history, { role: 'user', content: parsed.message }],
+        system: buildSystemBlocks(parsed.systemPrompt),
+        messages: buildMessages(parsed.history, parsed.message),
       });
 
       let fullText = '';
@@ -216,11 +329,24 @@ export const astrologerChatStream = onRequest(
       }
 
       const final = await stream.finalMessage();
+      const usage = final.usage as Anthropic.Usage & {
+        cache_read_input_tokens?: number | null;
+        cache_creation_input_tokens?: number | null;
+      };
+      await logUsage(uid, {
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+        cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+        cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
+        model: parsed.model,
+      });
       send('done', {
         reply: fullText,
         usage: {
-          input: final.usage.input_tokens,
-          output: final.usage.output_tokens,
+          input: usage.input_tokens,
+          output: usage.output_tokens,
+          cacheRead: usage.cache_read_input_tokens ?? 0,
+          cacheCreation: usage.cache_creation_input_tokens ?? 0,
         },
       });
     } catch (err) {
