@@ -14,6 +14,7 @@ import {
 } from './dailyInsightEngine';
 import { birthChart, dailyInsight, compatibility } from '../data/mockInsights';
 import {
+  getActivePartner,
   getBirthInputFromStore,
   partnerToBirthInput,
   useOnboardingStore,
@@ -119,7 +120,7 @@ export const astrologyService = {
   async getCompatibility(): Promise<CompatibilityReport | typeof compatibility> {
     const state = useOnboardingStore.getState();
     const userInput = getBirthInputFromStore(state);
-    const partner = state.partner;
+    const partner = getActivePartner(state);
     if (!userInput || !partner) return compatibility;
     return synthesizeCompatibility(
       userInput,

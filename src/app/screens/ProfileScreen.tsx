@@ -24,6 +24,7 @@ const MENU: { key: string; label: string; icon: IconName; route?: keyof MainStac
   { key: 'chart', label: 'My Birth Chart', icon: 'chart', route: 'BirthChart' as any },
   { key: 'saved', label: 'Saved Insights', icon: 'star', route: 'SavedInsights' },
   { key: 'astrologer', label: 'My Astrologer', icon: 'sparkle', route: 'EditAstrologer' },
+  { key: 'partners', label: 'Partners', icon: 'heart', route: 'Partners' },
   { key: 'subscription', label: 'Subscription', icon: 'crown', route: 'Subscription' },
   { key: 'settings', label: 'Settings', icon: 'settings', route: 'Settings' },
   { key: 'privacy', label: 'Privacy', icon: 'shield', route: 'Placeholder' as any },

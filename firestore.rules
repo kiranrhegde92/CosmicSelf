@@ -30,6 +30,10 @@ service cloud.firestore {
       match /profile/{document=**} {
         allow read, write: if isOwner(uid);
       }
+
+      match /partners/{partnerId} {
+        allow read, write: if isOwner(uid);
+      }
     }
   }
 }

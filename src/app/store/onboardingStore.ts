@@ -13,6 +13,8 @@ export type BirthLocation = {
 };
 
 export type Partner = {
+  /** Stable id used as Firestore doc id and React keys. */
+  id: string;
   /** Display name like "Alex" or "Mom". */
   name: string;
   /** ISO date YYYY-MM-DD */
@@ -29,8 +31,10 @@ type OnboardingState = {
   selectedAstrologerId: string | null;
   mode: Mode;
   hasOnboarded: boolean;
-  /** Last partner the user ran a compatibility report against. */
-  partner: Partner | null;
+  /** All partners the user has saved for compatibility reports. */
+  partners: Partner[];
+  /** Currently active partner id, or null when none are selected. */
+  activePartnerId: string | null;
 
   setBirthDate: (d: string) => void;
   setBirthTime: (t: { hour: number; minute: number; ampm: 'AM' | 'PM' }) => void;
@@ -38,7 +42,10 @@ type OnboardingState = {
   setAstrologer: (id: string) => void;
   setMode: (m: Mode) => void;
   completeOnboarding: () => void;
-  setPartner: (p: Partner | null) => void;
+  addPartner: (p: Partner) => void;
+  updatePartner: (id: string, patch: Partial<Omit<Partner, 'id'>>) => void;
+  removePartner: (id: string) => void;
+  setActivePartnerId: (id: string | null) => void;
   reset: () => void;
 };
 
@@ -49,8 +56,26 @@ const initialState = {
   selectedAstrologerId: 'veda' as string | null,
   mode: 'serious' as Mode,
   hasOnboarded: false,
-  partner: null as Partner | null,
+  partners: [] as Partner[],
+  activePartnerId: null as string | null,
 };
+
+/**
+ * Generate a stable id for a new partner. Uses crypto.randomUUID when
+ * available (Hermes 0.74+, web) and falls back to a Date+Math seeded
+ * id otherwise.
+ */
+export function newPartnerId(): string {
+  const g = globalThis as { crypto?: { randomUUID?: () => string } };
+  if (g.crypto?.randomUUID) {
+    try {
+      return g.crypto.randomUUID();
+    } catch {
+      // fall through
+    }
+  }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 export const useOnboardingStore = create<OnboardingState>()(
   persist(
@@ -63,7 +88,27 @@ export const useOnboardingStore = create<OnboardingState>()(
       setAstrologer: (id) => set({ selectedAstrologerId: id }),
       setMode: (m) => set({ mode: m }),
       completeOnboarding: () => set({ hasOnboarded: true }),
-      setPartner: (p) => set({ partner: p }),
+      addPartner: (p) =>
+        set((state) => ({
+          partners: [...state.partners, p],
+          activePartnerId: state.activePartnerId ?? p.id,
+        })),
+      updatePartner: (id, patch) =>
+        set((state) => ({
+          partners: state.partners.map((p) =>
+            p.id === id ? { ...p, ...patch, id: p.id } : p,
+          ),
+        })),
+      removePartner: (id) =>
+        set((state) => {
+          const partners = state.partners.filter((p) => p.id !== id);
+          const activePartnerId =
+            state.activePartnerId === id
+              ? partners[0]?.id ?? null
+              : state.activePartnerId;
+          return { partners, activePartnerId };
+        }),
+      setActivePartnerId: (id) => set({ activePartnerId: id }),
       reset: () => set({ ...initialState }),
     }),
     {
@@ -76,9 +121,32 @@ export const useOnboardingStore = create<OnboardingState>()(
         selectedAstrologerId: state.selectedAstrologerId,
         mode: state.mode,
         hasOnboarded: state.hasOnboarded,
-        partner: state.partner,
+        partners: state.partners,
+        activePartnerId: state.activePartnerId,
       }),
-      version: 3,
+      version: 4,
+      migrate: (persistedState, fromVersion) => {
+        // Pre-v4 schema kept a single `partner` field. Promote it to the
+        // `partners` array and mark it active.
+        const s = (persistedState ?? {}) as Record<string, unknown>;
+        if (fromVersion < 4) {
+          const legacy = s.partner as Partner | null | undefined;
+          if (legacy && typeof legacy === 'object') {
+            const id =
+              typeof (legacy as Partner).id === 'string' && (legacy as Partner).id
+                ? (legacy as Partner).id
+                : newPartnerId();
+            const promoted: Partner = { ...(legacy as Partner), id };
+            s.partners = [promoted];
+            s.activePartnerId = id;
+          } else {
+            s.partners = [];
+            s.activePartnerId = null;
+          }
+          delete s.partner;
+        }
+        return s as OnboardingState;
+      },
     },
   ),
 );
@@ -116,4 +184,13 @@ export function partnerToBirthInput(p: Partner) {
     lon: p.birthLocation.lon,
     tzOffsetMinutes: p.birthLocation.tzOffsetMinutes ?? 0,
   };
+}
+
+/**
+ * Back-compat helper: returns the active Partner (or null). Replaces the
+ * old `state.partner` accessor everywhere now that the store holds many.
+ */
+export function getActivePartner(state: OnboardingState): Partner | null {
+  if (!state.activePartnerId) return null;
+  return state.partners.find((p) => p.id === state.activePartnerId) ?? null;
 }
