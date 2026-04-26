@@ -90,6 +90,7 @@ export default function SettingsScreen() {
       key: 'notifications',
       title: 'Notifications',
       items: [
+        { key: 'permPrep', label: 'How notifications work', icon: 'info', type: 'navigate' },
         { key: 'push', label: 'Push Notifications', icon: 'bell', type: 'switch' },
         { key: 'horoscope', label: 'Daily Horoscope', icon: 'sparkle', type: 'switch' },
       ],
@@ -177,6 +178,8 @@ export default function SettingsScreen() {
   const onRowPress = (key: string, route?: keyof MainStackParamList) => {
     if (route) return navigation.navigate(route as any);
     switch (key) {
+      case 'permPrep':
+        return navigation.navigate('PushPermissionPrePrompt');
       case 'edit':
         return navigation.navigate('EditProfile');
       case 'birth':

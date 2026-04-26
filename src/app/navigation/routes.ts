@@ -22,6 +22,9 @@ export const MAIN_ROUTES = {
   EditAstrologer: 'EditAstrologer',
   EditPartner: 'EditPartner',
   SavedInsights: 'SavedInsights',
+  SavedInsightDetail: 'SavedInsightDetail',
+  DailyInsightHistory: 'DailyInsightHistory',
+  PushPermissionPrePrompt: 'PushPermissionPrePrompt',
   FullReport: 'FullReport',
   Placeholder: 'Placeholder',
 } as const;
@@ -60,6 +63,9 @@ export type MainStackParamList = {
   EditAstrologer: undefined;
   EditPartner: undefined;
   SavedInsights: undefined;
+  SavedInsightDetail: { id: string };
+  DailyInsightHistory: undefined;
+  PushPermissionPrePrompt: undefined;
   FullReport: undefined;
   Placeholder: PlaceholderParams;
 };

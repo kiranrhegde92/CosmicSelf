@@ -72,6 +72,9 @@ export default function DailyInsightScreen() {
         <ScreenHeader
           title="Today's Cosmic Insight"
           subtitle={insight?.date}
+          rightIcon="book"
+          rightLabel="Insight history"
+          onRightPress={() => navigation.navigate('DailyInsightHistory')}
         />
         <ScrollView
           contentContainerStyle={styles.scroll}
