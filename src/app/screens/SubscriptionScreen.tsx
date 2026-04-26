@@ -42,6 +42,9 @@ export default function SubscriptionScreen() {
           onBack={() => navigation.goBack()}
           rightLabel="Restore"
           rightIcon="orbit"
+          onRightPress={async () => {
+            await paymentService.restorePurchases();
+          }}
         />
         <ScrollView
           contentContainerStyle={styles.scroll}

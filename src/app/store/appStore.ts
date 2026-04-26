@@ -5,8 +5,14 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 type AppState = {
   themeMode: 'default' | 'glass';
   activeTab: string;
+  pushEnabled: boolean;
+  dailyHoroscopeEnabled: boolean;
+  cosmicSoundscapeEnabled: boolean;
   setThemeMode: (m: 'default' | 'glass') => void;
   setActiveTab: (t: string) => void;
+  setPushEnabled: (v: boolean) => void;
+  setDailyHoroscopeEnabled: (v: boolean) => void;
+  setCosmicSoundscapeEnabled: (v: boolean) => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -14,16 +20,25 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       themeMode: 'default',
       activeTab: 'Home',
+      pushEnabled: true,
+      dailyHoroscopeEnabled: true,
+      cosmicSoundscapeEnabled: true,
       setThemeMode: (themeMode) => set({ themeMode }),
       setActiveTab: (activeTab) => set({ activeTab }),
+      setPushEnabled: (pushEnabled) => set({ pushEnabled }),
+      setDailyHoroscopeEnabled: (dailyHoroscopeEnabled) => set({ dailyHoroscopeEnabled }),
+      setCosmicSoundscapeEnabled: (cosmicSoundscapeEnabled) => set({ cosmicSoundscapeEnabled }),
     }),
     {
       name: 'cosmicself.app',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         themeMode: state.themeMode,
+        pushEnabled: state.pushEnabled,
+        dailyHoroscopeEnabled: state.dailyHoroscopeEnabled,
+        cosmicSoundscapeEnabled: state.cosmicSoundscapeEnabled,
       }),
-      version: 1,
+      version: 2,
     },
   ),
 );

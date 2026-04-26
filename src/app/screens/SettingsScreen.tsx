@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Pressable,
   ScrollView,
@@ -19,6 +19,7 @@ import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { useAppStore } from '../store/appStore';
+import { notificationsService } from '../services/notificationsService';
 import { MainStackParamList } from '../navigation/routes';
 
 type ItemType = 'switch' | 'navigate' | 'value';
@@ -43,9 +44,30 @@ export default function SettingsScreen() {
   const themeMode = useAppStore((s) => s.themeMode);
   const setThemeMode = useAppStore((s) => s.setThemeMode);
 
-  const [notif, setNotif] = useState(true);
-  const [horoscopeNotif, setHoroscopeNotif] = useState(true);
-  const [soundscape, setSoundscape] = useState(true);
+  const pushEnabled = useAppStore((s) => s.pushEnabled);
+  const setPushEnabled = useAppStore((s) => s.setPushEnabled);
+  const horoscopeEnabled = useAppStore((s) => s.dailyHoroscopeEnabled);
+  const setHoroscopeEnabled = useAppStore((s) => s.setDailyHoroscopeEnabled);
+  const soundscape = useAppStore((s) => s.cosmicSoundscapeEnabled);
+  const setSoundscape = useAppStore((s) => s.setCosmicSoundscapeEnabled);
+
+  const togglePush = async (next: boolean) => {
+    setPushEnabled(next);
+    if (!next) {
+      await notificationsService.cancelDailyHoroscope();
+    } else if (horoscopeEnabled) {
+      await notificationsService.scheduleDailyHoroscope();
+    }
+  };
+
+  const toggleHoroscope = async (next: boolean) => {
+    setHoroscopeEnabled(next);
+    if (next && pushEnabled) {
+      await notificationsService.scheduleDailyHoroscope();
+    } else {
+      await notificationsService.cancelDailyHoroscope();
+    }
+  };
 
   const sections: Section[] = [
     {
@@ -107,15 +129,16 @@ export default function SettingsScreen() {
   ];
 
   const switchValue = (key: string) => {
-    if (key === 'push') return notif;
-    if (key === 'horoscope') return horoscopeNotif;
+    if (key === 'push') return pushEnabled;
+    if (key === 'horoscope') return horoscopeEnabled;
     if (key === 'sound') return soundscape;
     return false;
   };
-  const switchOn = (key: string) => {
-    if (key === 'push') setNotif((v) => !v);
-    if (key === 'horoscope') setHoroscopeNotif((v) => !v);
-    if (key === 'sound') setSoundscape((v) => !v);
+
+  const onToggle = (key: string) => {
+    if (key === 'push') return togglePush(!pushEnabled);
+    if (key === 'horoscope') return toggleHoroscope(!horoscopeEnabled);
+    if (key === 'sound') return setSoundscape(!soundscape);
   };
 
   return (
@@ -142,7 +165,7 @@ export default function SettingsScreen() {
                       idx === section.items.length - 1 && { borderBottomWidth: 0 },
                     ]}
                     onPress={() => {
-                      if (item.type === 'switch') return switchOn(item.key);
+                      if (item.type === 'switch') return onToggle(item.key);
                       if (item.route) navigation.navigate(item.route as any);
                       if (item.key === 'theme') {
                         setThemeMode(themeMode === 'default' ? 'glass' : 'default');
@@ -157,7 +180,7 @@ export default function SettingsScreen() {
                     {item.type === 'switch' ? (
                       <Switch
                         value={switchValue(item.key)}
-                        onValueChange={() => switchOn(item.key)}
+                        onValueChange={() => onToggle(item.key)}
                         thumbColor={switchValue(item.key) ? colors.goldBright : '#fff'}
                         trackColor={{ false: '#3A1B6D', true: colors.goldMuted }}
                       />

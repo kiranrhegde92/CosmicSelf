@@ -15,11 +15,20 @@ across 14 production-ready screens.
 | Runtime          | React Native + Expo SDK 51                 |
 | Language         | TypeScript (strict)                        |
 | Navigation       | React Navigation (Native Stack + Bottom Tabs) |
-| State            | Zustand                                    |
+| State            | Zustand + AsyncStorage persist             |
 | Animations       | React Native Reanimated 3                  |
 | Gestures         | React Native Gesture Handler               |
 | Vectors / SVG    | react-native-svg                           |
 | Gradients / Glass| expo-linear-gradient + expo-blur           |
+| Auth (optional)  | Supabase                                   |
+| AI Chat (optional) | Anthropic Claude (`@anthropic-ai/sdk`)   |
+| Astrology engine | `astronomy-engine` (pure JS)               |
+| Geocoding        | Open-Meteo (free, no key)                  |
+| Date picker      | `@react-native-community/datetimepicker`   |
+| Notifications    | `expo-notifications` (local daily horoscope) |
+| Subscriptions    | RevenueCat scaffold (`react-native-purchases`) |
+| Tests            | Jest + ts-jest                             |
+| CI               | GitHub Actions (typecheck + tests)         |
 
 ---
 
@@ -44,10 +53,11 @@ npm run android
 npm start
 ```
 
-### 3. Type-check
+### 3. Type-check + run tests
 
 ```bash
 npm run typecheck
+npm test
 ```
 
 ---
@@ -211,6 +221,63 @@ To swap in real artwork later:
    instead of the SVG layers.
 
 ---
+
+## Backend integrations
+
+The app is wired to graceful fallbacks: if you don't configure any of the
+optional providers below, the relevant feature uses curated mock data — the
+app still launches and every screen still works.
+
+Copy `.env.example` to `.env` and fill in the keys you have:
+
+```env
+# Supabase auth (email/password). Without these, login/signup accept anything.
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+
+# Anthropic chat. Without it, ChatScreen serves curated replies.
+EXPO_PUBLIC_ANTHROPIC_API_KEY=
+EXPO_PUBLIC_ANTHROPIC_MODEL=claude-haiku-4-5
+
+# RevenueCat. Requires a custom dev build (`react-native-purchases`).
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=
+EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=
+```
+
+> **Security:** keys here ship in the bundle. Move the Anthropic key to a
+> backend proxy (Cloudflare Worker / Supabase Edge Function / Vercel) before
+> a public release. `aiChatService.ts` has the security note inline.
+
+### What's implemented
+
+- **Auth (`authService`)** — Supabase email/password sign-up and sign-in,
+  plus `restoreSession` on app boot via `useSessionSync`. Local Zustand
+  store stays in sync with `onAuthStateChange`.
+- **Birth chart (`astroEngine`)** — pure-JS Sun / Moon / Ascendant /
+  dominant-planet calculator using `astronomy-engine` + the Meeus
+  ascendant formula. Inputs are taken from the persisted onboarding store
+  (date + time + lat/lon + tz offset).
+- **Geocoding (`geocodingService`)** — debounced city search against
+  Open-Meteo (no API key). The result populates the onboarding store with
+  real coordinates and timezone.
+- **Date picker** — native `DateTimePicker` (spinner on iOS, modal on
+  Android), clamped to 1900..today, emitting ISO `YYYY-MM-DD`.
+- **AI chat (`aiChatService`)** — Claude (default `claude-haiku-4-5`) with
+  a per-astrologer / per-mode system prompt and the user's natal placements
+  woven in. Falls back to curated replies without a key.
+- **Daily horoscope** — `notificationsService.scheduleDailyHoroscope()`
+  schedules a recurring local notification at 8:00 AM. The Settings toggle
+  drives it; the bootstrap hook re-schedules on app start.
+- **Subscriptions** — `paymentService` is feature-flagged. With keys + a
+  custom dev build, `react-native-purchases` is loaded lazily; without
+  them, the screen mocks success.
+
+### EAS
+
+`eas.json` ships with three profiles: `development` (dev client),
+`preview` (internal install: APK on Android, simulator IPA on iOS),
+`production` (auto-incrementing version). Trigger the relevant cloud
+build with `eas build --profile <name> --platform ios|android`.
 
 ## License
 
