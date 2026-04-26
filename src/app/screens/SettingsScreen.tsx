@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   Share,
@@ -12,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -27,6 +29,12 @@ import { useOnboardingStore } from '../store/onboardingStore';
 import { notificationsService } from '../services/notificationsService';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
 import { MainStackParamList } from '../navigation/routes';
+
+// Languages with shipped JSON resource bundles. Add a new entry here once
+// `src/app/i18n/locales/<code>.json` exists and is registered in i18n/index.ts.
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', label: 'English' },
+] as const;
 
 type ItemType = 'switch' | 'navigate' | 'value';
 
@@ -77,62 +85,66 @@ export default function SettingsScreen() {
     }
   };
 
+  const currentLangLabel =
+    SUPPORTED_LANGUAGES.find((l) => l.code === i18n.language)?.label ??
+    SUPPORTED_LANGUAGES[0].label;
+
   const sections: Section[] = [
     {
       key: 'account',
-      title: 'Account',
+      title: t('settings.section.account'),
       items: [
-        { key: 'edit', label: 'Edit Profile', icon: 'user', type: 'navigate' },
-        { key: 'birth', label: 'Birth Details', icon: 'calendar', type: 'navigate' },
-        { key: 'language', label: 'Language', icon: 'orbit', type: 'value', value: 'English' },
+        { key: 'edit', label: t('settings.item.editProfile'), icon: 'user', type: 'navigate' },
+        { key: 'birth', label: t('settings.item.birthDetails'), icon: 'calendar', type: 'navigate' },
+        { key: 'language', label: t('settings.item.language'), icon: 'orbit', type: 'value', value: currentLangLabel },
       ],
     },
     {
       key: 'notifications',
-      title: 'Notifications',
+      title: t('settings.section.notifications'),
       items: [
-        { key: 'permPrep', label: 'How notifications work', icon: 'info', type: 'navigate' },
-        { key: 'push', label: 'Push Notifications', icon: 'bell', type: 'switch' },
-        { key: 'horoscope', label: 'Daily Horoscope', icon: 'sparkle', type: 'switch' },
+        { key: 'permPrep', label: t('settings.item.permPrep'), icon: 'info', type: 'navigate' },
+        { key: 'push', label: t('settings.item.push'), icon: 'bell', type: 'switch' },
+        { key: 'horoscope', label: t('settings.item.horoscope'), icon: 'sparkle', type: 'switch' },
       ],
     },
     {
       key: 'astrologer',
-      title: 'Astrologer Preferences',
+      title: t('settings.section.astrologer'),
       items: [
-        { key: 'mychan', label: 'My Astrologer', icon: 'star', type: 'navigate' },
-        { key: 'mode', label: 'Mode', icon: 'sun', type: 'value', value: mode === 'fun' ? 'Fun' : 'Serious' },
+        { key: 'mychan', label: t('settings.item.myAstrologer'), icon: 'star', type: 'navigate' },
+        { key: 'mode', label: t('settings.item.mode'), icon: 'sun', type: 'value', value: mode === 'fun' ? t('settings.value.modeFun') : t('settings.value.modeSerious') },
       ],
     },
     {
       key: 'theme',
-      title: 'Theme',
+      title: t('settings.section.theme'),
       items: [
-        { key: 'theme', label: 'Theme Mode', icon: 'moon', type: 'value', value: themeMode === 'glass' ? 'Glass' : 'Default' },
-        { key: 'sound', label: 'Cosmic Soundscape', icon: 'magic', type: 'switch' },
+        { key: 'theme', label: t('settings.item.themeMode'), icon: 'moon', type: 'value', value: themeMode === 'glass' ? t('settings.value.themeGlass') : t('settings.value.themeDefault') },
+        { key: 'sound', label: t('settings.item.soundscape'), icon: 'magic', type: 'switch' },
       ],
     },
     {
       key: 'privacy',
-      title: 'Privacy',
+      title: t('settings.section.privacy'),
       items: [
-        { key: 'data', label: 'Data & Permissions', icon: 'shield', type: 'navigate' },
-        { key: 'export', label: 'Export My Data', icon: 'arrow-up', type: 'navigate' },
+        { key: 'data', label: t('settings.item.data'), icon: 'shield', type: 'navigate' },
+        { key: 'export', label: t('settings.item.export'), icon: 'arrow-up', type: 'navigate' },
       ],
     },
     {
       key: 'subscription',
-      title: 'Subscription',
+      title: t('settings.section.subscription'),
       items: [
-        { key: 'plan', label: 'Manage Plan', icon: 'crown', type: 'navigate', route: 'Subscription' },
+        { key: 'plan', label: t('settings.item.managePlan'), icon: 'crown', type: 'navigate', route: 'Subscription' },
       ],
     },
     {
       key: 'help',
-      title: 'Help',
+      title: t('settings.section.help'),
       items: [
-        { key: 'faq', label: 'FAQ', icon: 'info', type: 'navigate' },
-        { key: 'contact', label: 'Contact Support', icon: 'chat', type: 'navigate' },
+        { key: 'faq', label: t('settings.item.faq'), icon: 'info', type: 'navigate' },
+        { key: 'contact', label: t('settings.item.contact'), icon: 'chat', type: 'navigate' },
       ],
     },
   ];
@@ -168,7 +180,7 @@ export default function SettingsScreen() {
     };
     try {
       await Share.share({
-        title: 'CosmicSelf data export',
+        title: t('settings.exportTitle'),
         message: JSON.stringify(payload, null, 2),
       });
     } catch {
@@ -190,13 +202,19 @@ export default function SettingsScreen() {
       case 'mode':
         return navigation.navigate('EditAstrologer');
       case 'language':
-        return navigation.navigate('Placeholder', {
-          title: 'Language',
-          subtitle: 'More tongues, more stars',
-          icon: 'orbit',
-          body:
-            'Localization is on the roadmap. CosmicSelf currently speaks English; Hindi, Spanish, and Portuguese are queued for the next release.',
-        });
+        return Alert.alert(
+          t('settings.language.title'),
+          t('settings.language.body'),
+          [
+            ...SUPPORTED_LANGUAGES.map((lang) => ({
+              text: lang.label,
+              onPress: () => {
+                i18n.changeLanguage(lang.code).catch(() => {});
+              },
+            })),
+            { text: t('common.cancel') as string, style: 'cancel' as const },
+          ],
+        );
       case 'theme':
         setThemeMode(themeMode === 'default' ? 'glass' : 'default');
         return;

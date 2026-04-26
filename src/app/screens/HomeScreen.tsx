@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -44,12 +45,13 @@ const PREMIUM_KEYS = new Set(['video', 'compatibility']);
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
   const premium = usePremium();
 
-  const greeting = getGreeting();
+  const greeting = getGreeting(t);
 
   const onAction = (key: string) => {
     if (PREMIUM_KEYS.has(key) && !premium.isPremium) {
@@ -66,16 +68,16 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => navigation.navigate('Settings')}
             style={styles.iconChip}
-            accessibilityLabel="Open menu"
+            accessibilityLabel={t('home.openMenu')}
           >
             <CosmicIcon name="menu" color={colors.white} size={18} />
           </Pressable>
           <View style={styles.welcome}>
-            <Text style={styles.welcomeKicker}>Welcome to your</Text>
-            <Text style={styles.welcomeTitle}>Astrologer's Chamber</Text>
+            <Text style={styles.welcomeKicker}>{t('home.kicker')}</Text>
+            <Text style={styles.welcomeTitle}>{t('home.title')}</Text>
             <View style={styles.welcomeOrnament}>
               <View style={styles.orLine} />
-              <Text style={styles.welcomeSub}>Ask. Discover. Align.</Text>
+              <Text style={styles.welcomeSub}>{t('home.subtitle')}</Text>
               <View style={styles.orLine} />
             </View>
           </View>
@@ -83,7 +85,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Subscription')}
             style={styles.iconChip}
             accessibilityLabel={
-              premium.isPremium ? 'You have premium' : 'Upgrade to premium'
+              premium.isPremium ? t('home.premiumBadge.have') : t('home.premiumBadge.upgrade')
             }
           >
             <CosmicIcon
@@ -100,9 +102,9 @@ export default function HomeScreen() {
         >
           <View style={styles.greetCard}>
             <Text style={styles.greetText}>
-              {greeting}, {user?.name || 'Seeker'}
+              {greeting}, {user?.name || t('home.greeting.fallbackName')}
             </Text>
-            <Text style={styles.greetSub}>Your stars are aligned today</Text>
+            <Text style={styles.greetSub}>{t('home.alignment')}</Text>
           </View>
 
           <View style={styles.heroWrap}>
@@ -148,8 +150,8 @@ export default function HomeScreen() {
         <CoachMark
           storageKey="home.askbar"
           icon="sparkle"
-          title="Ask the stars, anytime"
-          body="Type a question in the bar at the bottom and we'll route it straight to your astrologer's chamber."
+          title={t('home.coach.title')}
+          body={t('home.coach.body')}
         />
       </SafeAreaView>
     </CosmicBackground>
@@ -173,11 +175,11 @@ function routeFromKey(key: string, nav: NativeStackNavigationProp<MainStackParam
   }
 }
 
-function getGreeting() {
+function getGreeting(t: (key: string) => string) {
   const h = new Date().getHours();
-  if (h < 12) return 'Good Morning';
-  if (h < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (h < 12) return t('home.greeting.morning');
+  if (h < 17) return t('home.greeting.afternoon');
+  return t('home.greeting.evening');
 }
 
 function FloatingAction({
@@ -197,6 +199,7 @@ function FloatingAction({
   locked?: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const y = useSharedValue(0);
 
   useEffect(() => {
@@ -221,7 +224,7 @@ function FloatingAction({
     <Animated.View style={[styles.actionCell, animated]}>
       <Pressable
         onPress={onPress}
-        accessibilityLabel={locked ? `${label} — premium` : label}
+        accessibilityLabel={locked ? `${label} — ${t('home.premiumLockedSuffix')}` : label}
       >
         <View style={[styles.actionWrap, { borderColor: `${tint}66`, shadowColor: tint }]}>
           <LinearGradient
@@ -260,6 +263,7 @@ function tintColor(t: 'gold' | 'rose' | 'mint' | 'blue' | 'purple') {
 }
 
 function AskBar({ onSubmit }: { onSubmit: (text: string) => void }) {
+  const { t } = useTranslation();
   const [value, setValue] = React.useState('');
 
   const submit = () => {
@@ -279,7 +283,7 @@ function AskBar({ onSubmit }: { onSubmit: (text: string) => void }) {
         <TextInput
           value={value}
           onChangeText={setValue}
-          placeholder="Ask the stars..."
+          placeholder={t('home.askPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           style={styles.askInput}
           returnKeyType="send"
@@ -288,7 +292,7 @@ function AskBar({ onSubmit }: { onSubmit: (text: string) => void }) {
         />
         <Pressable
           onPress={submit}
-          accessibilityLabel="Send to chat"
+          accessibilityLabel={t('home.sendToChat')}
           style={styles.askButton}
         >
           <CosmicIcon name="sparkle" color="#1A0F33" size={16} />

@@ -3,6 +3,7 @@ import { ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -19,19 +20,20 @@ import { spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
 import { MainStackParamList } from '../navigation/routes';
 
-const items: {
+const itemDescriptors: {
   key: keyof ChartCardData;
   icon: IconName;
-  title: string;
+  titleKey: string;
 }[] = [
-  { key: 'sun', icon: 'sun', title: 'Sun Sign' },
-  { key: 'moon', icon: 'moon', title: 'Moon Sign' },
-  { key: 'ascendant', icon: 'arrow-up', title: 'Ascendant' },
-  { key: 'dominant', icon: 'star', title: 'Dominant Planet' },
+  { key: 'sun', icon: 'sun', titleKey: 'birthChart.card.sun' },
+  { key: 'moon', icon: 'moon', titleKey: 'birthChart.card.moon' },
+  { key: 'ascendant', icon: 'arrow-up', titleKey: 'birthChart.card.ascendant' },
+  { key: 'dominant', icon: 'star', titleKey: 'birthChart.card.dominant' },
 ];
 
 export default function BirthChartScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const [chart, setChart] = useState<ChartCardData | null>(null);
   const [natal, setNatal] = useState<NatalChart | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -61,18 +63,15 @@ export default function BirthChartScreen() {
     return (
       <CosmicBackground intensity="low" showZodiacWheel>
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          <ScreenHeader title="My Cosmic Chart" subtitle="Your planetary blueprint" />
+          <ScreenHeader title={t('birthChart.title')} subtitle={t('birthChart.subtitle')} />
           <View style={styles.emptyWrap}>
             <View style={styles.chartWrap}>
               <BirthChartPreview size={240} chart={null} rotate={false} />
             </View>
-            <Text style={styles.emptyTitle}>Add your birth details</Text>
-            <Text style={styles.emptyBody}>
-              Your chart unlocks once we know your birth date, time, and city.
-              Without them we can't place your Sun, Moon, or Ascendant.
-            </Text>
+            <Text style={styles.emptyTitle}>{t('birthChart.empty.title')}</Text>
+            <Text style={styles.emptyBody}>{t('birthChart.empty.body')}</Text>
             <CosmicButton
-              title="Set Birth Details"
+              title={t('birthChart.empty.cta')}
               icon="calendar"
               onPress={() => navigation.navigate('EditBirthDetails')}
               style={{ marginTop: spacing.lg }}
@@ -86,7 +85,7 @@ export default function BirthChartScreen() {
   return (
     <CosmicBackground intensity="low" showZodiacWheel>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScreenHeader title="My Cosmic Chart" subtitle="Your planetary blueprint" />
+        <ScreenHeader title={t('birthChart.title')} subtitle={t('birthChart.subtitle')} />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
@@ -96,7 +95,7 @@ export default function BirthChartScreen() {
           </View>
 
           <View style={styles.grid}>
-            {items.map((it) => {
+            {itemDescriptors.map((it) => {
               const data = chart?.[it.key];
               return (
                 <View key={it.key} style={styles.cell}>
@@ -105,7 +104,7 @@ export default function BirthChartScreen() {
                       <View style={styles.iconWrap}>
                         <CosmicIcon name={it.icon} color={colors.goldPrimary} size={16} />
                       </View>
-                      <Text style={styles.cardTitle}>{it.title}</Text>
+                      <Text style={styles.cardTitle}>{t(it.titleKey)}</Text>
                     </View>
                     {data ? (
                       <>
@@ -126,26 +125,26 @@ export default function BirthChartScreen() {
           </View>
 
           <CosmicButton
-            title="Ask AI to Explain My Chart"
+            title={t('birthChart.askAi')}
             icon="sparkle"
             onPress={() => navigation.navigate('Chat' as any)}
             disabled={!chart}
             style={{ marginTop: spacing.lg }}
           />
           <CosmicButton
-            title="Share my chart"
+            title={t('birthChart.share')}
             icon="arrow-up"
             variant="glass"
             disabled={!chart}
             onPress={async () => {
               if (!chart) return;
               const message =
-                `✦ My Cosmic Chart\n` +
+                `${t('birthChart.shareHeader')}\n` +
                 `${chart.sun.name}\n${chart.moon.name}\n` +
                 `${chart.ascendant.name}\n${chart.dominant.name}\n\n` +
-                `Generated by CosmicSelf`;
+                t('birthChart.shareFooter');
               try {
-                await Share.share({ title: 'My cosmic chart', message });
+                await Share.share({ title: t('birthChart.shareTitle'), message });
                 analytics.track(Events.ShareCompleted, { surface: 'birth_chart' });
               } catch {
                 /* user dismissed */
