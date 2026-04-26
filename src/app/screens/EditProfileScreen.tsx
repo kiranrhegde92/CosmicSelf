@@ -33,14 +33,16 @@ export default function EditProfileScreen() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | undefined>();
 
   const onSave = async () => {
     if (!user) return;
     const trimmed = name.trim();
     if (!trimmed) {
-      Alert.alert('Name required', 'Please enter your name.');
+      setNameError('Please enter your name');
       return;
     }
+    setNameError(undefined);
     setSaving(true);
     try {
       if (features.firebase) {
@@ -78,8 +80,12 @@ export default function EditProfileScreen() {
                 placeholder="Your name"
                 icon="user"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(t) => {
+                  setName(t);
+                  if (nameError) setNameError(undefined);
+                }}
                 autoCapitalize="words"
+                error={nameError}
               />
               <View style={styles.readOnlyRow}>
                 <Text style={styles.readOnlyLabel}>Email</Text>

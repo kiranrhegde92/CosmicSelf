@@ -28,7 +28,6 @@ import CosmicBackground from '../components/cosmic/CosmicBackground';
 import CosmicIcon from '../components/ui/CosmicIcon';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import { ASTROLOGERS } from '../data/astrologers';
-import { sampleMessages } from '../data/mockInsights';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
@@ -51,7 +50,7 @@ export default function ChatScreen() {
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const [messages, setMessages] = useState<Message[]>(sampleMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -127,9 +126,16 @@ export default function ChatScreen() {
       if (stored && stored.length > 0) {
         setMessages(stored.map((m) => ({ id: m.id, from: m.from, text: m.text })));
       } else {
-        // First time on this thread (or no Firestore configured): show seeded
-        // sample exchange so the UI isn't empty.
-        setMessages(sampleMessages);
+        // First time on this thread: open with the astrologer's signature
+        // greeting so the screen never looks empty + each character has a
+        // distinct voice from the first message.
+        setMessages([
+          {
+            id: `welcome-${astrologerId}`,
+            from: 'ai',
+            text: astrologer.greeting,
+          },
+        ]);
       }
       setHydrated(true);
     })();

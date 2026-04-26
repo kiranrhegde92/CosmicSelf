@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -55,7 +55,20 @@ export default function SubscriptionScreen() {
           rightLabel="Restore"
           rightIcon="orbit"
           onRightPress={async () => {
-            await paymentService.restorePurchases();
+            const result = await paymentService.restorePurchases();
+            if (result.ok && result.entitlement) {
+              Alert.alert(
+                'Restored',
+                result.tier === 'master'
+                  ? 'Your Cosmic Master plan is back. Welcome home.'
+                  : 'Your Pro Seeker plan is restored. Tap to keep exploring.',
+              );
+            } else {
+              Alert.alert(
+                'Nothing to restore',
+                'We couldn\'t find an active subscription on this account.',
+              );
+            }
           }}
         />
         <ScrollView
@@ -75,6 +88,7 @@ export default function SubscriptionScreen() {
                 key={p.id}
                 plan={p}
                 selected={selected === p.id}
+                isCurrent={currentTier === p.id}
                 onPress={() => setSelected(p.id)}
               />
             ))}
@@ -118,18 +132,24 @@ function PlanCard({
   plan,
   selected,
   onPress,
+  isCurrent,
 }: {
   plan: typeof SUBSCRIPTION_PLANS[number];
   selected: boolean;
   onPress: () => void;
+  isCurrent: boolean;
 }) {
   return (
     <Pressable onPress={onPress} style={[styles.planCard, selected && styles.planCardSelected]}>
-      {plan.recommended && (
+      {isCurrent ? (
+        <View style={[styles.popular, styles.currentBadge]}>
+          <Text style={styles.popularText}>CURRENT PLAN</Text>
+        </View>
+      ) : plan.recommended ? (
         <View style={styles.popular}>
           <Text style={styles.popularText}>MOST POPULAR</Text>
         </View>
-      )}
+      ) : null}
       <LinearGradient
         colors={
           selected
@@ -177,14 +197,15 @@ function PlanCard({
           </View>
         ))}
       </View>
-      <View style={[styles.cta, selected && styles.ctaSelected]}>
+      <View style={[styles.cta, selected && styles.ctaSelected, isCurrent && styles.ctaCurrent]}>
         <Text
           style={[
             styles.ctaText,
             selected && { color: '#1A0F33' },
+            isCurrent && { color: colors.goldBright },
           ]}
         >
-          {plan.ctaLabel}
+          {isCurrent ? 'Active' : plan.ctaLabel}
         </Text>
       </View>
     </Pressable>
@@ -259,6 +280,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radii.pill,
     zIndex: 5,
+  },
+  currentBadge: {
+    backgroundColor: colors.success,
   },
   popularText: {
     ...typography.pill,
@@ -342,6 +366,10 @@ const styles = StyleSheet.create({
   ctaSelected: {
     backgroundColor: colors.goldPrimary,
     borderColor: colors.goldBright,
+  },
+  ctaCurrent: {
+    backgroundColor: 'rgba(101,230,165,0.15)',
+    borderColor: colors.success,
   },
   ctaText: {
     ...typography.pill,

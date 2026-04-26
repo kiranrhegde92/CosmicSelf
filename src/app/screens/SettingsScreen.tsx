@@ -57,6 +57,7 @@ export default function SettingsScreen() {
   const setHoroscopeEnabled = useAppStore((s) => s.setDailyHoroscopeEnabled);
   const soundscape = useAppStore((s) => s.cosmicSoundscapeEnabled);
   const setSoundscape = useAppStore((s) => s.setCosmicSoundscapeEnabled);
+  const mode = useOnboardingStore((s) => s.mode);
 
   const togglePush = async (next: boolean) => {
     setPushEnabled(next);
@@ -99,7 +100,7 @@ export default function SettingsScreen() {
       title: 'Astrologer Preferences',
       items: [
         { key: 'mychan', label: 'My Astrologer', icon: 'star', type: 'navigate' },
-        { key: 'mode', label: 'Mode', icon: 'sun', type: 'value', value: 'Serious' },
+        { key: 'mode', label: 'Mode', icon: 'sun', type: 'value', value: mode === 'fun' ? 'Fun' : 'Serious' },
       ],
     },
     {

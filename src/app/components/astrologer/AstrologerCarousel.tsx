@@ -9,6 +9,7 @@ import {
 
 import AstrologerCard from './AstrologerCard';
 import { Astrologer } from '../../data/astrologers';
+import { haptics } from '../../services/hapticsService';
 import { spacing } from '../../theme/spacing';
 
 type Props = {
@@ -28,7 +29,10 @@ export default function AstrologerCarousel({ data, selectedId, onSelect }: Props
     const center = viewableItems.find((v) => v.isViewable);
     if (center && center.item) {
       const id = (center.item as Astrologer).id;
-      if (id !== selectedId) onSelect(id);
+      if (id !== selectedId) {
+        haptics.selection();
+        onSelect(id);
+      }
     }
   }).current;
 

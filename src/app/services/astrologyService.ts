@@ -41,20 +41,35 @@ const SIGN_BLURBS: Record<string, string> = {
   Pisces: 'Imaginative, empathic, dreamlike.',
 };
 
+/**
+ * "17.534" → "17° 32′" — the standard astrology format for a placement
+ * within its sign. We round minutes to the nearest integer.
+ */
+function formatDegreeMinutes(degree: number): string {
+  const wholeDeg = Math.floor(degree);
+  const minutes = Math.round((degree - wholeDeg) * 60);
+  // Carry: 17° 60′ → 18° 00′
+  if (minutes === 60) return `${wholeDeg + 1}° 00′`;
+  return `${wholeDeg}° ${minutes.toString().padStart(2, '0')}′`;
+}
+
 function chartToCards(chart: NatalChart): ChartCardData {
+  const sunDeg = formatDegreeMinutes(chart.sun.degree);
+  const moonDeg = formatDegreeMinutes(chart.moon.degree);
+  const ascDeg = formatDegreeMinutes(chart.ascendant.degree);
   return {
     sun: {
-      name: `Sun in ${chart.sun.sign}`,
+      name: `Sun in ${chart.sun.sign}, ${sunDeg}`,
       glyph: '☉',
       detail: SIGN_BLURBS[chart.sun.sign] ?? '',
     },
     moon: {
-      name: `Moon in ${chart.moon.sign}`,
+      name: `Moon in ${chart.moon.sign}, ${moonDeg}`,
       glyph: '☽',
       detail: SIGN_BLURBS[chart.moon.sign] ?? '',
     },
     ascendant: {
-      name: `${chart.ascendant.sign} Rising`,
+      name: `${chart.ascendant.sign} Rising, ${ascDeg}`,
       glyph: ZODIAC_GLYPHS[chart.ascendant.sign] ?? '↑',
       detail: SIGN_BLURBS[chart.ascendant.sign] ?? '',
     },
