@@ -22,6 +22,7 @@ function toUser(u: User | null, fallbackName?: string, fallbackEmail?: string): 
       fallbackName?.trim() ||
       (u?.email ?? fallbackEmail ?? '').split('@')[0] ||
       'Seeker',
+    photoURL: u?.photoURL ?? null,
   };
 }
 

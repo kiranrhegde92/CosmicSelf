@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { Functions, getFunctions } from 'firebase/functions';
+import { FirebaseStorage, getStorage as getFbStorage } from 'firebase/storage';
 
 import { env, features } from '../config/env';
 
@@ -17,6 +18,7 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let fns: Functions | null = null;
+let storage: FirebaseStorage | null = null;
 
 function getApp(): FirebaseApp | null {
   if (!features.firebase) return null;
@@ -58,4 +60,12 @@ export function getFns(): Functions | null {
   if (!a) return null;
   if (!fns) fns = getFunctions(a, env.firebase.region);
   return fns;
+}
+
+/** Firebase Storage instance — used for user avatars (see storage.rules). */
+export function getFirebaseStorage(): FirebaseStorage | null {
+  const a = getApp();
+  if (!a) return null;
+  if (!storage) storage = getFbStorage(a);
+  return storage;
 }

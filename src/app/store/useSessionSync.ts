@@ -46,6 +46,7 @@ export function useSessionSync(enabled: boolean) {
               user.displayName?.trim() ||
               user.email?.split('@')[0] ||
               'Seeker',
+            photoURL: user.photoURL ?? null,
           });
         })
       : null;

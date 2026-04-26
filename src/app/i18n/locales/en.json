@@ -108,6 +108,52 @@
     },
     "exportTitle": "CosmicSelf data export"
   },
+  "editProfile": {
+    "title": "Edit Profile",
+    "subtitle": "How the stars address you",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "Your name",
+    "emailLabel": "Email",
+    "emailHelper": "Email is the credential we use to sign you in. To change it, contact support.",
+    "save": "Save Changes",
+    "errors": {
+      "emptyName": "Please enter your name",
+      "saveFailedTitle": "Save failed",
+      "saveFailedBody": "We couldn't update your name. Try again."
+    },
+    "avatar": {
+      "edit": "Change profile photo",
+      "actionsTitle": "Profile photo",
+      "pick": "Choose from library",
+      "remove": "Remove photo",
+      "uploading": "Uploading…",
+      "permissionTitle": "Photos permission needed",
+      "permissionBody": "Allow photo library access in Settings to pick an avatar.",
+      "uploadFailedTitle": "Upload failed",
+      "uploadFailedBody": "We couldn't upload that image. Try again or pick a different one."
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "fallbackName": "Cosmic Seeker",
+    "fallbackEmail": "seeker@cosmic.self",
+    "birthDetails": "Birth Details",
+    "row": {
+      "date": "Date",
+      "location": "Location",
+      "astrologer": "Astrologer"
+    },
+    "menu": {
+      "chart": "My Birth Chart",
+      "saved": "Saved Insights",
+      "astrologer": "My Astrologer",
+      "partners": "Partners",
+      "subscription": "Subscription",
+      "settings": "Settings",
+      "privacy": "Privacy"
+    },
+    "logout": "Log out"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

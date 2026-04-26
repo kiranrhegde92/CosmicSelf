@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -20,18 +21,19 @@ import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { MainStackParamList } from '../navigation/routes';
 
-const MENU: { key: string; label: string; icon: IconName; route?: keyof MainStackParamList }[] = [
-  { key: 'chart', label: 'My Birth Chart', icon: 'chart', route: 'BirthChart' as any },
-  { key: 'saved', label: 'Saved Insights', icon: 'star', route: 'SavedInsights' },
-  { key: 'astrologer', label: 'My Astrologer', icon: 'sparkle', route: 'EditAstrologer' },
-  { key: 'partners', label: 'Partners', icon: 'heart', route: 'Partners' },
-  { key: 'subscription', label: 'Subscription', icon: 'crown', route: 'Subscription' },
-  { key: 'settings', label: 'Settings', icon: 'settings', route: 'Settings' },
-  { key: 'privacy', label: 'Privacy', icon: 'shield', route: 'Placeholder' as any },
+const MENU: { key: string; labelKey: string; icon: IconName; route?: keyof MainStackParamList }[] = [
+  { key: 'chart', labelKey: 'profile.menu.chart', icon: 'chart', route: 'BirthChart' as any },
+  { key: 'saved', labelKey: 'profile.menu.saved', icon: 'star', route: 'SavedInsights' },
+  { key: 'astrologer', labelKey: 'profile.menu.astrologer', icon: 'sparkle', route: 'EditAstrologer' },
+  { key: 'partners', labelKey: 'profile.menu.partners', icon: 'heart', route: 'Partners' },
+  { key: 'subscription', labelKey: 'profile.menu.subscription', icon: 'crown', route: 'Subscription' },
+  { key: 'settings', labelKey: 'profile.menu.settings', icon: 'settings', route: 'Settings' },
+  { key: 'privacy', labelKey: 'profile.menu.privacy', icon: 'shield', route: 'Placeholder' as any },
 ];
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const reset = useOnboardingStore((s) => s.reset);
@@ -46,60 +48,72 @@ export default function ProfileScreen() {
   return (
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScreenHeader title="My Profile" rightIcon="settings" onRightPress={() => navigation.navigate('Settings')} />
+        <ScreenHeader title={t('profile.title')} rightIcon="settings" onRightPress={() => navigation.navigate('Settings')} />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.profileHero}>
+          <Pressable
+            style={styles.profileHero}
+            onPress={() => navigation.navigate('EditProfile')}
+            accessibilityLabel={t('editProfile.avatar.edit')}
+            accessibilityRole="button"
+          >
             <View style={styles.avatarStack}>
               <View style={styles.wheelLayer}>
                 <ZodiacWheel size={210} rotateSpeed={70000} showSigns={false} />
               </View>
               <View style={styles.avatarFrame}>
-                <AstrologerAvatar visualKey={astrologer.visualKey} size={140} glow />
+                {user?.photoURL ? (
+                  <Image source={{ uri: user.photoURL }} style={styles.avatarImg} />
+                ) : (
+                  <AstrologerAvatar visualKey={astrologer.visualKey} size={140} glow />
+                )}
               </View>
             </View>
-            <Text style={styles.name}>{user?.name || 'Cosmic Seeker'}</Text>
-            <Text style={styles.email}>{user?.email || 'seeker@cosmic.self'}</Text>
+            <Text style={styles.name}>{user?.name || t('profile.fallbackName')}</Text>
+            <Text style={styles.email}>{user?.email || t('profile.fallbackEmail')}</Text>
             <TierBadge tier={tier} size="md" style={{ marginTop: spacing.sm }} />
-          </View>
+          </Pressable>
 
           <GlassCard style={styles.summary}>
-            <Text style={styles.summaryTitle}>Birth Details</Text>
-            <Row icon="calendar" label="Date" value={birthDate || '—'} />
-            <Row icon="map-pin" label="Location" value={birthLocation?.label || '—'} />
-            <Row icon="sparkle" label="Astrologer" value={astrologer.name} />
+            <Text style={styles.summaryTitle}>{t('profile.birthDetails')}</Text>
+            <Row icon="calendar" label={t('profile.row.date')} value={birthDate || '—'} />
+            <Row icon="map-pin" label={t('profile.row.location')} value={birthLocation?.label || '—'} />
+            <Row icon="sparkle" label={t('profile.row.astrologer')} value={astrologer.name} />
           </GlassCard>
 
           <View style={styles.menuWrap}>
-            {MENU.map((m) => (
-              <Pressable
-                key={m.key}
-                style={styles.menuRow}
-                onPress={() => {
-                  if (!m.route) return;
-                  if (m.key === 'privacy') {
-                    navigation.navigate('Placeholder', {
-                      title: 'Privacy',
-                      subtitle: 'Your data, your stars',
-                      icon: 'shield',
-                      body:
-                        'CosmicSelf stores only what you tell it: your birth details, saved insights, and chats with your astrologer. Everything is scoped to your account by Firestore Rules and never shared with third parties.',
-                    });
-                    return;
-                  }
-                  navigation.navigate(m.route as any);
-                }}
-                accessibilityLabel={m.label}
-              >
-                <View style={styles.menuIcon}>
-                  <CosmicIcon name={m.icon} color={colors.goldPrimary} size={16} />
-                </View>
-                <Text style={styles.menuLabel}>{m.label}</Text>
-                <CosmicIcon name="chevron-right" color={colors.textMuted} size={16} />
-              </Pressable>
-            ))}
+            {MENU.map((m) => {
+              const label = t(m.labelKey);
+              return (
+                <Pressable
+                  key={m.key}
+                  style={styles.menuRow}
+                  onPress={() => {
+                    if (!m.route) return;
+                    if (m.key === 'privacy') {
+                      navigation.navigate('Placeholder', {
+                        title: 'Privacy',
+                        subtitle: 'Your data, your stars',
+                        icon: 'shield',
+                        body:
+                          'CosmicSelf stores only what you tell it: your birth details, saved insights, and chats with your astrologer. Everything is scoped to your account by Firestore Rules and never shared with third parties.',
+                      });
+                      return;
+                    }
+                    navigation.navigate(m.route as any);
+                  }}
+                  accessibilityLabel={label}
+                >
+                  <View style={styles.menuIcon}>
+                    <CosmicIcon name={m.icon} color={colors.goldPrimary} size={16} />
+                  </View>
+                  <Text style={styles.menuLabel}>{label}</Text>
+                  <CosmicIcon name="chevron-right" color={colors.textMuted} size={16} />
+                </Pressable>
+              );
+            })}
           </View>
 
           <Pressable
@@ -108,9 +122,9 @@ export default function ProfileScreen() {
               logout();
               reset();
             }}
-            accessibilityLabel="Log out"
+            accessibilityLabel={t('profile.logout')}
           >
-            <Text style={styles.logoutText}>Log out</Text>
+            <Text style={styles.logoutText}>{t('profile.logout')}</Text>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -163,6 +177,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 0 },
+  },
+  avatarImg: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
   },
   name: {
     ...typography.section,
