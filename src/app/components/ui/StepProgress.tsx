@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { typography, fonts } from '../../theme/typography';
 import CosmicIcon from './CosmicIcon';
 
 type Props = {
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   dotText: {
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
     fontSize: 13,
   },
   label: {

@@ -14,7 +14,7 @@ import { astrologyService, ChartCardData } from '../services/astrologyService';
 import { birthChart as mockBirthChart } from '../data/mockInsights';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { typography, fonts } from '../theme/typography';
 import { MainStackParamList } from '../navigation/routes';
 
 const items: {
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
     letterSpacing: 0.4,
   },
   cardValue: {

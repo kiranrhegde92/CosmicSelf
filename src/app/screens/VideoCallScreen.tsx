@@ -23,7 +23,7 @@ import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { typography, fonts } from '../theme/typography';
 import { MainStackParamList } from '../navigation/routes';
 
 const STATES = [
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   sideTagValue: {
     ...typography.caption,
     color: colors.goldBright,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
     fontSize: 11,
   },
   avatarStack: {

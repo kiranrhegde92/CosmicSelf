@@ -19,7 +19,7 @@ import CosmicButton from '../components/ui/CosmicButton';
 import CosmicIcon from '../components/ui/CosmicIcon';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { typography, fonts } from '../theme/typography';
 import { AuthStackParamList } from '../navigation/routes';
 import { authService } from '../services/authService';
 import { useAuthStore } from '../store/authStore';
@@ -287,6 +287,6 @@ const styles = StyleSheet.create({
   footerLink: {
     ...typography.body,
     color: colors.goldBright,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
   },
 });

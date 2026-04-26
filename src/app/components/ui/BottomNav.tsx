@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { typography, fonts } from '../../theme/typography';
 import CosmicIcon, { IconName } from './CosmicIcon';
 
 const ICONS: Record<string, IconName> = {
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.caption,
+    fontFamily: fonts.bodyMedium,
     fontSize: 11,
     letterSpacing: 0.4,
-    fontWeight: '500',
   },
 });

@@ -15,7 +15,7 @@ import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { typography, fonts } from '../theme/typography';
 import { AuthStackParamList } from '../navigation/routes';
 
 export default function AstrologerSelectionScreen() {
@@ -121,6 +121,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.goldPrimary,
     marginTop: spacing.sm,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
   },
 });

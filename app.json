@@ -7,26 +7,32 @@
     "userInterfaceStyle": "dark",
     "scheme": "cosmicself",
     "newArchEnabled": false,
+    "icon": "./assets/images/icon.png",
     "splash": {
-      "backgroundColor": "#080817",
-      "resizeMode": "contain"
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#080817"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cosmicself.app",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "package": "com.cosmicself.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#080817"
       }
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-font"
     ]
   }
 }

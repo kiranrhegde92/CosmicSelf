@@ -29,7 +29,7 @@ import { useOnboardingStore } from '../store/onboardingStore';
 import { useAuthStore } from '../store/authStore';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
+import { typography, fonts } from '../theme/typography';
 import { homeQuickActions } from '../data/mockInsights';
 import { MainStackParamList } from '../navigation/routes';
 
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginTop: 6,
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
     textAlign: 'center',
   },
   actionDesc: {

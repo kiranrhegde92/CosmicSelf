@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
+import { typography, fonts } from '../../theme/typography';
 import GlassCard from '../ui/GlassCard';
 import CosmicIcon, { IconName } from '../ui/CosmicIcon';
 
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemibold,
     letterSpacing: 0.4,
   },
   value: {
