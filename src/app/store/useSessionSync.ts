@@ -6,7 +6,9 @@ import { authService } from '../services/authService';
 import { getFirebaseAuth } from '../services/firebaseClient';
 import { syncTierToFirestore } from '../services/entitlementService';
 import { startBirthMirror } from '../services/birthService';
+import { notificationsService } from '../services/notificationsService';
 import { setSentryUser } from '../services/sentryService';
+import { useAppStore } from './appStore';
 import { useAuthStore } from './authStore';
 import { useEntitlementStore } from './entitlementStore';
 
@@ -45,6 +47,10 @@ export function useSessionSync(enabled: boolean) {
             setSentryUser(null);
             stopBirthMirror?.();
             stopBirthMirror = null;
+            // Drop the push token so the scheduled Function stops sending
+            // pushes for this user. Local schedule is left intact (separate
+            // user setting).
+            notificationsService.unregisterPushToken().catch(() => {});
             return;
           }
           setSentryUser({ id: user.uid });
@@ -65,6 +71,11 @@ export function useSessionSync(enabled: boolean) {
           // leaking the listener across sign-out.
           stopBirthMirror?.();
           stopBirthMirror = startBirthMirror();
+          // If push is enabled in app settings, register the Expo token so
+          // the scheduled Function can deliver server-driven pushes.
+          if (useAppStore.getState().pushEnabled) {
+            notificationsService.registerPushToken().catch(() => {});
+          }
         })
       : null;
 

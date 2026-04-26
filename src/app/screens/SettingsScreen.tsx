@@ -28,7 +28,7 @@ import { useEntitlementStore, type Tier } from '../store/entitlementStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { notificationsService } from '../services/notificationsService';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
-import { deleteAccount } from '../services/accountService';
+import { deleteAccount, sendTestNotification } from '../services/accountService';
 import { MainStackParamList } from '../navigation/routes';
 
 // Languages with shipped JSON resource bundles. Add a new entry here once
@@ -72,8 +72,14 @@ export default function SettingsScreen() {
     setPushEnabled(next);
     if (!next) {
       await notificationsService.cancelDailyHoroscope();
-    } else if (horoscopeEnabled) {
-      await notificationsService.scheduleDailyHoroscope();
+      // Drop the server-side token too so the daily Function stops sending.
+      await notificationsService.unregisterPushToken();
+    } else {
+      // Register with the server so push-from-Functions starts working.
+      await notificationsService.registerPushToken();
+      if (horoscopeEnabled) {
+        await notificationsService.scheduleDailyHoroscope();
+      }
     }
   };
 
@@ -453,6 +459,23 @@ function DevPanel() {
         >
           <CosmicIcon name="orbit" color={colors.goldPrimary} size={14} />
           <Text style={devStyles.actionLabel}>Reset onboarding (signs out flow)</Text>
+        </Pressable>
+        <Pressable
+          style={devStyles.actionRow}
+          onPress={async () => {
+            try {
+              await sendTestNotification();
+              Alert.alert('Test push sent', 'It should appear shortly.');
+            } catch (err) {
+              Alert.alert(
+                'Push failed',
+                err instanceof Error ? err.message : 'Unknown error',
+              );
+            }
+          }}
+        >
+          <CosmicIcon name="bell" color={colors.goldPrimary} size={14} />
+          <Text style={devStyles.actionLabel}>Send test push (calls Function)</Text>
         </Pressable>
         <Pressable
           style={devStyles.actionRow}

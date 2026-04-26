@@ -1,7 +1,12 @@
 import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { doc, deleteField, serverTimestamp, setDoc } from 'firebase/firestore';
 
+import { features } from '../config/env';
 import { astrologyService } from './astrologyService';
+import { getDb, getFirebaseAuth } from './firebaseClient';
 
 const DAILY_HOROSCOPE_ID = 'cosmicself.daily-horoscope';
 const DEFAULT_BODY = 'The stars have new guidance for you. Tap to read.';
@@ -78,5 +83,82 @@ export const notificationsService = {
 
   async getScheduled() {
     return Notifications.getAllScheduledNotificationsAsync();
+  },
+
+  /**
+   * Register an Expo push token with Firestore at:
+   *   users/{uid}/profile/push
+   * so server-side jobs can deliver pushes when the app is killed.
+   *
+   * Safe to call multiple times — Expo returns a stable token per device,
+   * and we re-write only when it changes. Returns the token (or null on
+   * failure / simulator / no Firebase / no permission).
+   */
+  async registerPushToken(): Promise<string | null> {
+    if (!Device.isDevice) return null; // simulator can't get a real token
+    const granted = await ensurePermission();
+    if (!granted) return null;
+    await ensureChannel();
+
+    let token: string;
+    try {
+      // projectId comes from app.config / Expo project; required for the
+      // managed-workflow push token API.
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        // Fallback for older Constants shape.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (Constants as any).easConfig?.projectId;
+      const result = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined,
+      );
+      token = result.data;
+    } catch {
+      return null;
+    }
+
+    if (!features.firebase) return token;
+    const db = getDb();
+    const auth = getFirebaseAuth();
+    if (!db || !auth?.currentUser) return token;
+
+    try {
+      await setDoc(
+        doc(db, `users/${auth.currentUser.uid}/profile/push`),
+        {
+          expoPushToken: token,
+          platform: Platform.OS,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } catch {
+      /* mirror failure is non-fatal */
+    }
+    return token;
+  },
+
+  /**
+   * Clear the Firestore push token (on sign-out, etc.) so the scheduled
+   * Function stops sending pushes for this user. Local schedule is left
+   * intact — that's a separate user setting.
+   */
+  async unregisterPushToken(): Promise<void> {
+    if (!features.firebase) return;
+    const db = getDb();
+    const auth = getFirebaseAuth();
+    if (!db || !auth?.currentUser) return;
+    try {
+      await setDoc(
+        doc(db, `users/${auth.currentUser.uid}/profile/push`),
+        {
+          expoPushToken: deleteField(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } catch {
+      /* no-op */
+    }
   },
 };

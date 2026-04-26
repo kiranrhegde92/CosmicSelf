@@ -17,6 +17,7 @@ import {
   quotaErrorMessage,
 } from './lib/quota';
 import { ALLOWED_AUDIO_MIME, MAX_AUDIO_BYTES, extForMime } from './lib/mime';
+import { isValidExpoToken, sendExpoPush } from './lib/expoPush';
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
@@ -592,5 +593,80 @@ export const deleteAccount = onCall(
     }
 
     return { ok: true, authRemoved: true as const };
+  },
+);
+
+/* -------------------------------------------------------------------------- */
+/* Push notifications.                                                        */
+/*                                                                            */
+/* The client registers an Expo push token at:                                */
+/*   users/{uid}/profile/push.expoPushToken                                   */
+/* This callable sends a single test push to that token so we can verify the */
+/* end-to-end pipe (client registration → Firestore → Function → Expo →     */
+/* device) without waiting for the daily scheduled job to fire.              */
+/* -------------------------------------------------------------------------- */
+
+export const sendTestNotification = onCall(
+  {
+    timeoutSeconds: 30,
+    memory: '256MiB',
+    enforceAppCheck: ENFORCE_APP_CHECK,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Sign in to send a test push.');
+    }
+    const uid = request.auth.uid;
+
+    const snap = await admin
+      .firestore()
+      .doc(`users/${uid}/profile/push`)
+      .get();
+    const token = snap.data()?.expoPushToken;
+    if (!isValidExpoToken(token)) {
+      throw new HttpsError(
+        'failed-precondition',
+        'No Expo push token registered for this account. Enable push in Settings first.',
+      );
+    }
+
+    const tickets = await sendExpoPush([
+      {
+        to: token,
+        title: 'CosmicSelf ✦',
+        body: 'Test push received. The cosmic pipeline is humming.',
+        data: { route: 'DailyInsight', test: true },
+        sound: 'default',
+      },
+    ]);
+
+    const ticket = tickets[0];
+    if (ticket?.status === 'error') {
+      // Log + clear DeviceNotRegistered tokens so we don't keep retrying.
+      const detailsCode =
+        ticket.details && typeof ticket.details === 'object'
+          ? (ticket.details as { error?: string }).error
+          : undefined;
+      if (detailsCode === 'DeviceNotRegistered') {
+        try {
+          await admin
+            .firestore()
+            .doc(`users/${uid}/profile/push`)
+            .update({
+              expoPushToken: admin.firestore.FieldValue.delete(),
+              tokenInvalidatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        } catch {
+          /* best-effort cleanup */
+        }
+        throw new HttpsError(
+          'failed-precondition',
+          'Push token is no longer valid. Re-enable push in Settings.',
+        );
+      }
+      throw new HttpsError('internal', ticket.message || 'Push delivery failed.');
+    }
+
+    return { ok: true, ticketId: ticket?.status === 'ok' ? ticket.id : null };
   },
 );
