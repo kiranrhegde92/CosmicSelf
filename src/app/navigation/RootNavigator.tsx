@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { useHydration } from '../store/useHydration';
 import { useNotificationsBootstrap } from '../store/useNotificationsBootstrap';
+import { usePartnerSync } from '../store/usePartnerSync';
 import { useSessionSync } from '../store/useSessionSync';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
@@ -15,6 +16,7 @@ export default function RootNavigator() {
   const hasOnboarded = useOnboardingStore((s) => s.hasOnboarded);
   useSessionSync(hydrated);
   useNotificationsBootstrap(hydrated && isAuthenticated && hasOnboarded);
+  usePartnerSync(hydrated && isAuthenticated);
 
   if (!hydrated) {
     return <SplashView animate={false} />;

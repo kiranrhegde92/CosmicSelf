@@ -33,6 +33,7 @@ import { useOnboardingStore } from '../store/onboardingStore';
 import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatService';
 import { analytics, Events } from '../services/analyticsService';
 import { chatRepository } from '../services/chatRepository';
+import { haptics } from '../services/hapticsService';
 import { voiceService } from '../services/voiceService';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
@@ -67,6 +68,7 @@ export default function ChatScreen() {
   const onMicPress = async () => {
     if (voiceState === 'recording') {
       setVoiceState('transcribing');
+      haptics.tap();
       try {
         const transcribed = await voiceService.stopAndTranscribe();
         if (transcribed) {
@@ -91,6 +93,7 @@ export default function ChatScreen() {
     try {
       await voiceService.start();
       setVoiceState('recording');
+      haptics.thump();
       analytics.track(Events.ChatVoiceUsed, { astrologer: astrologerId });
     } catch {
       setMessages((m) => [

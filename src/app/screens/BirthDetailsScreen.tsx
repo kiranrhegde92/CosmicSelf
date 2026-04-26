@@ -140,7 +140,21 @@ export default function BirthDetailsScreen() {
                     onChange={(h, m) => setTime((t) => ({ ...t, hour: h, minute: m }))}
                     onAmpmChange={(a) => setTime((t) => ({ ...t, ampm: a }))}
                   />
-                  <Text style={styles.helperCenter}>If you're unsure, set 12:00 PM</Text>
+                  <Text style={styles.helperCenter}>
+                    Don't know? Tap "I'm not sure" to skip — we'll use 12:00 PM, which keeps
+                    your Sun and Moon accurate even if your Ascendant won't be.
+                  </Text>
+                  <CosmicButton
+                    title="I'm not sure of the time"
+                    variant="outline"
+                    onPress={() => {
+                      const noon = { hour: 12, minute: 0, ampm: 'PM' as const };
+                      setTime(noon);
+                      setBirthTime(noon);
+                      setStep(2);
+                    }}
+                    style={{ marginTop: spacing.md }}
+                  />
                 </Animated.View>
               )}
 

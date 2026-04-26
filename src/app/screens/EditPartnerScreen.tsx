@@ -25,6 +25,7 @@ import {
   type Partner,
 } from '../store/onboardingStore';
 import { analytics, Events } from '../services/analyticsService';
+import { partnerRepository } from '../services/partnerRepository';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -49,18 +50,23 @@ export default function EditPartnerScreen() {
 
   const onSave = () => {
     if (!canSave || !locationData) return;
-    setPartner({
+    const next = {
       name: name.trim(),
       birthDate: date,
       birthTime: time,
       birthLocation: locationData,
-    });
+    };
+    setPartner(next);
+    // Fire-and-forget — Firestore is the cross-device source of truth, but
+    // we don't make the user wait for the round-trip.
+    partnerRepository.save(next);
     analytics.track(Events.PartnerAdded);
     navigation.goBack();
   };
 
   const onClear = () => {
     setPartner(null);
+    partnerRepository.clear();
     navigation.goBack();
   };
 

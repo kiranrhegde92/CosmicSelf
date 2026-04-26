@@ -82,7 +82,11 @@ export default function CompatibilityScreen() {
           showsVerticalScrollIndicator={false}
         >
           {state.kind === 'live' ? (
-            <LiveReport report={state.report} onEditPartner={onEditPartner} />
+            <LiveReport
+              report={state.report}
+              onEditPartner={onEditPartner}
+              onFullReport={() => navigation.navigate('FullReport')}
+            />
           ) : (
             <Placeholder
               hasUserChart={!!userBirthDate}
@@ -139,11 +143,13 @@ function PartnerSlot({
 }
 
 function LiveReport({
+  onFullReport,
   report,
   onEditPartner,
 }: {
   report: CompatibilityReport;
   onEditPartner: () => void;
+  onFullReport: () => void;
 }) {
   return (
     <>
@@ -191,7 +197,7 @@ function LiveReport({
       <CosmicButton
         title="View Full Report"
         icon="book"
-        onPress={() => {}}
+        onPress={onFullReport}
         style={{ marginTop: spacing.lg }}
       />
     </>

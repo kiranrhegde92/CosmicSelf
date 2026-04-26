@@ -22,6 +22,7 @@ export const MAIN_ROUTES = {
   EditAstrologer: 'EditAstrologer',
   EditPartner: 'EditPartner',
   SavedInsights: 'SavedInsights',
+  FullReport: 'FullReport',
   Placeholder: 'Placeholder',
 } as const;
 
@@ -57,6 +58,7 @@ export type MainStackParamList = {
   EditAstrologer: undefined;
   EditPartner: undefined;
   SavedInsights: undefined;
+  FullReport: undefined;
   Placeholder: PlaceholderParams;
 };
 

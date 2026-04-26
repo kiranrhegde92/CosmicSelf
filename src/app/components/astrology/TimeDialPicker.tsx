@@ -13,6 +13,7 @@ import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
 import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { haptics } from '../../services/hapticsService';
 
 type Props = {
   hour: number;
@@ -70,7 +71,10 @@ export default function TimeDialPicker({ hour, minute, ampm, onChange, onAmpmCha
           {(['AM', 'PM'] as const).map((p) => (
             <Pressable
               key={p}
-              onPress={() => onAmpmChange(p)}
+              onPress={() => {
+                haptics.selection();
+                onAmpmChange(p);
+              }}
               style={[styles.ampmBtn, ampm === p && styles.ampmActive]}
             >
               <Text style={[styles.ampmText, ampm === p && styles.ampmTextActive]}>{p}</Text>

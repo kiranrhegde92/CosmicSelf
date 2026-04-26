@@ -22,6 +22,7 @@ import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
+import { useEntitlementStore, type Tier } from '../store/entitlementStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { notificationsService } from '../services/notificationsService';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
@@ -274,6 +275,7 @@ export default function SettingsScreen() {
               </GlassCard>
             </View>
           ))}
+          {__DEV__ && <DevPanel />}
           <Text style={styles.version}>{t('settings.version')}</Text>
         </ScrollView>
       </SafeAreaView>
@@ -330,5 +332,108 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.md,
+  },
+});
+
+/* -------------------------------------------------------------------------- */
+/* Dev tools — only rendered when __DEV__ is true.                            */
+/* -------------------------------------------------------------------------- */
+
+function DevPanel() {
+  const tier = useEntitlementStore((s) => s.tier);
+  const setTier = useEntitlementStore((s) => s.setTier);
+  const resetOnboarding = useOnboardingStore((s) => s.reset);
+
+  const tierBtn = (label: string, value: Tier) => (
+    <Pressable
+      key={value}
+      onPress={() => setTier(value)}
+      style={[devStyles.tierBtn, tier === value && devStyles.tierBtnActive]}
+    >
+      <Text
+        style={[devStyles.tierLabel, tier === value && { color: '#1A0F33' }]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <View style={{ marginTop: spacing.lg, marginBottom: spacing.md }}>
+      <Text style={devStyles.kicker}>DEV TOOLS</Text>
+      <GlassCard padding={spacing.md} style={{ borderRadius: radii.xl }}>
+        <Text style={devStyles.label}>Entitlement</Text>
+        <View style={devStyles.tierRow}>
+          {tierBtn('Free', 'free')}
+          {tierBtn('Pro', 'pro')}
+          {tierBtn('Master', 'master')}
+        </View>
+
+        <Pressable
+          style={devStyles.actionRow}
+          onPress={() => resetOnboarding()}
+        >
+          <CosmicIcon name="orbit" color={colors.goldPrimary} size={14} />
+          <Text style={devStyles.actionLabel}>Reset onboarding (signs out flow)</Text>
+        </Pressable>
+        <Pressable
+          style={devStyles.actionRow}
+          onPress={() => {
+            // Trip the ErrorBoundary on purpose for visual QA.
+            throw new Error('Dev panel: triggered test error');
+          }}
+        >
+          <CosmicIcon name="info" color={colors.error} size={14} />
+          <Text style={devStyles.actionLabel}>Crash render (test ErrorBoundary)</Text>
+        </Pressable>
+      </GlassCard>
+    </View>
+  );
+}
+
+const devStyles = StyleSheet.create({
+  kicker: {
+    ...typography.label,
+    color: colors.error,
+    marginBottom: spacing.xs,
+    marginLeft: 4,
+  },
+  label: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  tierRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: spacing.sm,
+  },
+  tierBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(246,200,95,0.35)',
+  },
+  tierBtnActive: {
+    backgroundColor: colors.goldPrimary,
+    borderColor: colors.goldBright,
+  },
+  tierLabel: {
+    ...typography.pill,
+    color: colors.textSecondary,
+    fontSize: 11,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 8,
+  },
+  actionLabel: {
+    ...typography.body,
+    color: colors.white,
+    fontSize: 13,
+    flex: 1,
   },
 });

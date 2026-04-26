@@ -22,6 +22,7 @@ import { colors, gradients } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
 import { shadows } from '../../theme/shadows';
 import { typography } from '../../theme/typography';
+import { haptics } from '../../services/hapticsService';
 import CosmicIcon, { IconName } from './CosmicIcon';
 
 type Variant = 'primary' | 'secondary' | 'glass' | 'outline' | 'danger';
@@ -90,7 +91,15 @@ export default function CosmicButton({
         accessibilityRole="button"
         accessibilityLabel={title}
         accessibilityState={{ disabled: !!isDisabled }}
-        onPress={isDisabled ? undefined : onPress}
+        onPress={
+          isDisabled
+            ? undefined
+            : () => {
+                if (variant === 'primary') haptics.press();
+                else haptics.tap();
+                onPress?.();
+              }
+        }
         onPressIn={() => (press.value = withTiming(1, { duration: 90 }))}
         onPressOut={() => (press.value = withTiming(0, { duration: 120 }))}
         style={[

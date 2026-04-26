@@ -14,6 +14,7 @@ import GlassCard from './GlassCard';
 import CosmicIcon from './CosmicIcon';
 import CosmicButton from './CosmicButton';
 import { analytics, Events } from '../../services/analyticsService';
+import { haptics } from '../../services/hapticsService';
 import { colors } from '../../theme/colors';
 import { radii, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -42,7 +43,10 @@ export default function Paywall({
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 
   React.useEffect(() => {
-    if (visible) analytics.track(Events.PaywallShown, { feature: feature ?? 'general' });
+    if (visible) {
+      analytics.track(Events.PaywallShown, { feature: feature ?? 'general' });
+      haptics.warning();
+    }
   }, [visible, feature]);
 
   const onUpgrade = () => {
