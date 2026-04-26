@@ -2,11 +2,13 @@ import {
   Timestamp,
   addDoc,
   collection,
+  deleteDoc,
   getDocs,
   limit,
   orderBy,
   query,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 
 import { features } from '../config/env';
@@ -88,6 +90,37 @@ export const chatRepository = {
       return ref.id;
     } catch {
       return null;
+    }
+  },
+
+  /**
+   * Wipe every message in this astrologer's thread. Batches in groups of 500
+   * to stay under Firestore's per-batch limit; idempotent and silent on
+   * partial failure.
+   */
+  async clearThread(astrologerId: string): Promise<boolean> {
+    if (!features.firebase) return false;
+    const db = getDb();
+    const path = colPath(astrologerId);
+    if (!db || !path) return false;
+    try {
+      // Pull up to 500 docs at a time and batch-delete.
+      // (Threads >500 messages are rare; we'll do another pass if we hit it.)
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const snap = await getDocs(query(collection(db, path), limit(500)));
+        if (snap.empty) return true;
+        if (snap.size === 1) {
+          await deleteDoc(snap.docs[0].ref);
+          continue;
+        }
+        const batch = writeBatch(db);
+        snap.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+        if (snap.size < 500) return true;
+      }
+    } catch {
+      return false;
     }
   },
 };

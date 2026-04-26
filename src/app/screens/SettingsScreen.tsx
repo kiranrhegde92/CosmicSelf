@@ -221,6 +221,14 @@ export default function SettingsScreen() {
           icon: 'chat',
           body:
             'Email support@cosmicself.app and we’ll respond within two business days. Include the version number from this screen for faster help.',
+          action: {
+            label: 'Open mail',
+            href:
+              'mailto:support@cosmicself.app?subject=' +
+              encodeURIComponent('CosmicSelf support request') +
+              '&body=' +
+              encodeURIComponent('Version: 1.0.0\n\nDescribe what happened:\n\n'),
+          },
         });
     }
   };

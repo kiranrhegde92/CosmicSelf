@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
@@ -27,15 +27,19 @@ export default function DailyInsightScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    astrologyService.getDailyInsight().then((d) => {
-      if (active) setInsight(d as DailyInsight);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Re-fetch on every focus — the date / strongest transit moves through
+  // the day so the saved-state shouldn't go stale across long sessions.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      astrologyService.getDailyInsight().then((d) => {
+        if (active) setInsight(d as DailyInsight);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const onSave = async () => {
     if (!insight || saved || saving) return;

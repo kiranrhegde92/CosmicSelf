@@ -17,11 +17,16 @@ import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { paymentService } from '../services/paymentService';
 import { analytics, Events } from '../services/analyticsService';
+import TierBadge from '../components/ui/TierBadge';
+import { useEntitlementStore } from '../store/entitlementStore';
 import { MainStackParamList } from '../navigation/routes';
 
 export default function SubscriptionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const [selected, setSelected] = useState('pro');
+  const currentTier = useEntitlementStore((s) => s.tier);
+  const [selected, setSelected] = useState<string>(
+    currentTier === 'free' ? 'pro' : currentTier,
+  );
   const [loading, setLoading] = useState(false);
 
   const onContinue = async () => {
@@ -59,6 +64,9 @@ export default function SubscriptionScreen() {
         >
           <View style={styles.heroWheel}>
             <ZodiacWheel size={240} rotateSpeed={90000} intensity="medium" />
+            <View style={styles.currentTierWrap}>
+              <TierBadge tier={currentTier} size="md" />
+            </View>
           </View>
 
           <View style={styles.plans}>
@@ -215,6 +223,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.sm,
     marginBottom: spacing.md,
+  },
+  currentTierWrap: {
+    position: 'absolute',
+    bottom: -6,
   },
   plans: {
     flexDirection: 'row',

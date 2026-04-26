@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   RouteProp,
@@ -24,13 +24,29 @@ type Params = {
   subtitle?: string;
   body?: string;
   icon?: IconName;
+  /**
+   * Optional action button shown beneath the body. `mailto`, `tel:` and
+   * https links open via Linking; in-app routes are handled by the screen
+   * via the `route` field.
+   */
+  action?: { label: string; href: string };
 };
 
 export default function PlaceholderScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const route = useRoute<RouteProp<{ Placeholder: Params }, 'Placeholder'>>();
-  const { title, subtitle, body, icon = 'sparkle' } = route.params ?? {
+  const { title, subtitle, body, icon = 'sparkle', action } = route.params ?? {
     title: 'Coming soon',
+  };
+
+  const onAction = async () => {
+    if (!action) return;
+    try {
+      const can = await Linking.canOpenURL(action.href);
+      if (can) await Linking.openURL(action.href);
+    } catch {
+      /* device doesn't have a handler — silently no-op */
+    }
   };
 
   return (
@@ -47,6 +63,16 @@ export default function PlaceholderScreen() {
               {body ??
                 'This corner of the cosmos is still under construction. Check back after the next celestial alignment.'}
             </Text>
+            {action && (
+              <Pressable
+                onPress={onAction}
+                style={styles.actionRow}
+                accessibilityLabel={action.label}
+              >
+                <CosmicIcon name="arrow-right" color={colors.goldPrimary} size={14} />
+                <Text style={styles.actionText}>{action.label}</Text>
+              </Pressable>
+            )}
           </GlassCard>
           <CosmicButton title="Got it" onPress={() => navigation.goBack()} variant="glass" />
         </View>
@@ -89,5 +115,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.sm,
     lineHeight: 22,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+  },
+  actionText: {
+    ...typography.body,
+    color: colors.goldPrimary,
+    fontSize: 14,
   },
 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -28,6 +29,7 @@ import CosmicIcon from '../components/ui/CosmicIcon';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import { ASTROLOGERS } from '../data/astrologers';
 import { sampleMessages } from '../data/mockInsights';
+import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatService';
@@ -136,8 +138,8 @@ export default function ChatScreen() {
     };
   }, [astrologerId, isAuthenticated]);
 
-  const onSend = async () => {
-    const trimmed = text.trim();
+  const sendMessage = async (raw: string) => {
+    const trimmed = raw.trim();
     if (!trimmed) return;
     const userMsg: Message = { id: `u-${Date.now()}`, from: 'user', text: trimmed };
     const nextMessages = [...messages, userMsg];
@@ -215,6 +217,40 @@ export default function ChatScreen() {
     );
   };
 
+  const onSend = () => sendMessage(text);
+
+  const onClearThread = () => {
+    Alert.alert(
+      'Clear conversation?',
+      `This permanently deletes your thread with ${astrologer.name}. The astrologer will start fresh.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            streamHandleRef.current?.cancel();
+            await chatRepository.clearThread(astrologerId);
+            setMessages([]);
+            setTyping(false);
+          },
+        },
+      ],
+    );
+  };
+
+  // If Home stashed a prompt in the AskBar, consume it once we've finished
+  // hydrating the thread. Clears immediately so refocusing the screen
+  // doesn't replay it.
+  useEffect(() => {
+    if (!hydrated) return;
+    const pending = useAppStore.getState().pendingChatPrompt;
+    if (!pending) return;
+    useAppStore.getState().setPendingChatPrompt(null);
+    sendMessage(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
   // Suppress the unused-variable lint for hydrated; reserved for the
   // upcoming "Loading conversation…" skeleton.
   void hydrated;
@@ -242,6 +278,13 @@ export default function ChatScreen() {
               </View>
             </View>
           </View>
+          <Pressable
+            onPress={onClearThread}
+            style={styles.iconChip}
+            accessibilityLabel="Clear conversation"
+          >
+            <CosmicIcon name="orbit" color={colors.textSecondary} size={18} />
+          </Pressable>
           <Pressable
             onPress={() => navigation.navigate('VideoCall')}
             style={styles.iconChip}

@@ -41,6 +41,8 @@ export type PlaceholderParams = {
   subtitle?: string;
   body?: string;
   icon?: IconName;
+  /** Optional CTA inside the card (mailto / tel / https). */
+  action?: { label: string; href: string };
 };
 
 export type MainStackParamList = {

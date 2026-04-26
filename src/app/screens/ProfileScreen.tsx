@@ -8,8 +8,10 @@ import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicIcon, { IconName } from '../components/ui/CosmicIcon';
+import TierBadge from '../components/ui/TierBadge';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import ZodiacWheel from '../components/cosmic/ZodiacWheel';
+import { useEntitlementStore } from '../store/entitlementStore';
 import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { useAuthStore } from '../store/authStore';
@@ -32,6 +34,7 @@ export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const reset = useOnboardingStore((s) => s.reset);
+  const tier = useEntitlementStore((s) => s.tier);
 
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const birthDate = useOnboardingStore((s) => s.birthDate);
@@ -58,6 +61,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.name}>{user?.name || 'Cosmic Seeker'}</Text>
             <Text style={styles.email}>{user?.email || 'seeker@cosmic.self'}</Text>
+            <TierBadge tier={tier} size="md" style={{ marginTop: spacing.sm }} />
           </View>
 
           <GlassCard style={styles.summary}>

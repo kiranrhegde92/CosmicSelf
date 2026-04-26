@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,7 @@ import Paywall from '../components/ui/Paywall';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import AuraRing from '../components/cosmic/AuraRing';
 import { ASTROLOGERS } from '../data/astrologers';
+import { useAppStore } from '../store/appStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { useAuthStore } from '../store/authStore';
 import { usePremium } from '../store/usePremium';
@@ -79,9 +81,15 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => navigation.navigate('Subscription')}
             style={styles.iconChip}
-            accessibilityLabel="Open premium"
+            accessibilityLabel={
+              premium.isPremium ? 'You have premium' : 'Upgrade to premium'
+            }
           >
-            <CosmicIcon name="sparkle" color={colors.goldBright} size={16} />
+            <CosmicIcon
+              name={premium.isMaster ? 'crown' : premium.isPremium ? 'star-filled' : 'sparkle'}
+              color={colors.goldBright}
+              size={16}
+            />
           </Pressable>
         </View>
 
@@ -123,7 +131,13 @@ export default function HomeScreen() {
           <View style={{ height: spacing.xl }} />
         </ScrollView>
 
-        <AskBar onPress={() => navigation.navigate('Chat')} />
+        <AskBar
+          onSubmit={(prompt) => {
+            const trimmed = prompt.trim();
+            if (trimmed) useAppStore.getState().setPendingChatPrompt(trimmed);
+            navigation.navigate('Chat' as any);
+          }}
+        />
 
         <Paywall
           visible={premium.paywallVisible}
@@ -237,21 +251,41 @@ function tintColor(t: 'gold' | 'rose' | 'mint' | 'blue' | 'purple') {
   }
 }
 
-function AskBar({ onPress }: { onPress: () => void }) {
+function AskBar({ onSubmit }: { onSubmit: (text: string) => void }) {
+  const [value, setValue] = React.useState('');
+
+  const submit = () => {
+    onSubmit(value);
+    setValue('');
+  };
+
   return (
     <View style={styles.askBarWrap}>
-      <Pressable onPress={onPress} style={styles.askBar} accessibilityLabel="Ask the stars">
+      <View style={styles.askBar}>
         <LinearGradient
           colors={['rgba(58,27,109,0.6)', 'rgba(20,18,41,0.85)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <Text style={styles.askPlaceholder}>Ask the stars...</Text>
-        <View style={styles.askButton}>
+        <TextInput
+          value={value}
+          onChangeText={setValue}
+          placeholder="Ask the stars..."
+          placeholderTextColor={colors.textSecondary}
+          style={styles.askInput}
+          returnKeyType="send"
+          blurOnSubmit
+          onSubmitEditing={submit}
+        />
+        <Pressable
+          onPress={submit}
+          accessibilityLabel="Send to chat"
+          style={styles.askButton}
+        >
           <CosmicIcon name="sparkle" color="#1A0F33" size={16} />
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -417,6 +451,13 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.textSecondary,
     ...typography.body,
+  },
+  askInput: {
+    flex: 1,
+    color: colors.white,
+    ...typography.body,
+    paddingVertical: 0,
+    fontSize: 15,
   },
   askButton: {
     width: 36,
