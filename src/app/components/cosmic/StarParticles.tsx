@@ -10,9 +10,29 @@ import Animated, {
   withDelay,
   Easing,
 } from 'react-native-reanimated';
-import { useIsFocused } from '@react-navigation/native';
+import {
+  NavigationContainerRefContext,
+  useIsFocused,
+} from '@react-navigation/native';
 
 import { colors } from '../../theme/colors';
+
+/**
+ * `useIsFocused` throws when called outside a NavigationContainer (e.g. in
+ * SplashView, which renders before the navigator mounts). Detect that
+ * once via the NavigationContainerRefContext and short-circuit to
+ * `true` (assume focused) when outside.
+ *
+ * Calling `useIsFocused` conditionally is safe in spirit: a given
+ * component instance is either mounted inside or outside a navigator for
+ * its entire lifetime, so the hook-count never changes between renders.
+ */
+function useIsFocusedSafe(): boolean {
+  const navRef = React.useContext(NavigationContainerRefContext);
+  if (!navRef) return true;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useIsFocused();
+}
 
 type Star = {
   id: number;
@@ -95,7 +115,7 @@ function StarParticles({ count, intensity = 'medium', style }: Props) {
   const total = count ?? (intensity === 'high' ? 60 : intensity === 'low' ? 18 : 36);
   // Pause when the screen isn't focused — saves 30+ Reanimated handles per
   // background screen. Also pause for users with reduce-motion on.
-  const focused = useIsFocused();
+  const focused = useIsFocusedSafe();
   const reducedMotion = useReducedMotion();
   const paused = !focused || reducedMotion;
 
