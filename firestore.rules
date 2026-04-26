@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Per-user data only — every document under users/{uid} is readable and
+// writable only by that signed-in user. Public read of static catalogs
+// (e.g. zodiac glyphs, astrologer descriptions) is not enabled here on
+// purpose: that content ships in the app bundle, not Firestore.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /threads/{astrologerId}/messages/{messageId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.from in ['user', 'ai']
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 8000;
+        allow update, delete: if false; // immutable transcripts
+      }
+
+      match /savedInsights/{insightId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+  }
+}

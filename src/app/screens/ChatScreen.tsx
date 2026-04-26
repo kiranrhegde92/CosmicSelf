@@ -28,8 +28,10 @@ import CosmicIcon from '../components/ui/CosmicIcon';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import { ASTROLOGERS } from '../data/astrologers';
 import { sampleMessages } from '../data/mockInsights';
+import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { aiChatService, ChatMessage } from '../services/aiChatService';
+import { chatRepository } from '../services/chatRepository';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -42,10 +44,12 @@ export default function ChatScreen() {
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const mode = useOnboardingStore((s) => s.mode);
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const [messages, setMessages] = useState<Message[]>(sampleMessages);
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
 
   const scrollDown = () => {
@@ -56,6 +60,27 @@ export default function ChatScreen() {
 
   useEffect(scrollDown, [messages.length, typing]);
 
+  // Load persisted history per astrologer thread.
+  useEffect(() => {
+    let active = true;
+    setHydrated(false);
+    (async () => {
+      const stored = await chatRepository.loadHistory(astrologerId);
+      if (!active) return;
+      if (stored && stored.length > 0) {
+        setMessages(stored.map((m) => ({ id: m.id, from: m.from, text: m.text })));
+      } else {
+        // First time on this thread (or no Firestore configured): show seeded
+        // sample exchange so the UI isn't empty.
+        setMessages(sampleMessages);
+      }
+      setHydrated(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [astrologerId, isAuthenticated]);
+
   const onSend = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -64,6 +89,10 @@ export default function ChatScreen() {
     setMessages(nextMessages);
     setText('');
     setTyping(true);
+
+    // Fire-and-forget persistence — don't block the UI on Firestore.
+    chatRepository.appendMessage(astrologerId, { from: 'user', text: trimmed });
+
     const history: ChatMessage[] = nextMessages.map((m) => ({
       role: m.from === 'user' ? 'user' : 'assistant',
       content: m.text,
@@ -75,8 +104,13 @@ export default function ChatScreen() {
     });
     const aiMsg: Message = { id: `a-${Date.now()}`, from: 'ai', text: reply };
     setMessages((m) => [...m, aiMsg]);
+    chatRepository.appendMessage(astrologerId, { from: 'ai', text: reply });
     setTyping(false);
   };
+
+  // Suppress the unused-variable lint for hydrated; reserved for the
+  // upcoming "Loading conversation…" skeleton.
+  void hydrated;
 
   return (
     <CosmicBackground intensity="low">
