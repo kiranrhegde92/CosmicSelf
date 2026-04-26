@@ -17,6 +17,9 @@ import EditAstrologerScreen from '../screens/EditAstrologerScreen';
 import EditPartnerScreen from '../screens/EditPartnerScreen';
 import FullReportScreen from '../screens/FullReportScreen';
 import SavedInsightsScreen from '../screens/SavedInsightsScreen';
+import SavedInsightDetailScreen from '../screens/SavedInsightDetailScreen';
+import DailyInsightHistoryScreen from '../screens/DailyInsightHistoryScreen';
+import PushPermissionPrePromptScreen from '../screens/PushPermissionPrePromptScreen';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
 
 import BottomNav from '../components/ui/BottomNav';
@@ -61,6 +64,9 @@ export default function MainNavigator() {
       <Stack.Screen name="EditPartner" component={EditPartnerScreen} />
       <Stack.Screen name="FullReport" component={FullReportScreen} />
       <Stack.Screen name="SavedInsights" component={SavedInsightsScreen} />
+      <Stack.Screen name="SavedInsightDetail" component={SavedInsightDetailScreen} />
+      <Stack.Screen name="DailyInsightHistory" component={DailyInsightHistoryScreen} />
+      <Stack.Screen name="PushPermissionPrePrompt" component={PushPermissionPrePromptScreen} />
       <Stack.Screen name="Placeholder" component={PlaceholderScreen} />
     </Stack.Navigator>
   );

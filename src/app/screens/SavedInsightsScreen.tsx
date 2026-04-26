@@ -94,27 +94,34 @@ export default function SavedInsightsScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             renderItem={({ item }) => (
-              <GlassCard style={styles.card}>
-                <View style={styles.row}>
-                  <View style={styles.glyphWrap}>
-                    <Text style={styles.glyph}>{item.zodiacGlyph}</Text>
+              <Pressable
+                onPress={() =>
+                  navigation.navigate('SavedInsightDetail', { id: item.id })
+                }
+                accessibilityLabel={`Open insight from ${item.date}`}
+              >
+                <GlassCard style={styles.card}>
+                  <View style={styles.row}>
+                    <View style={styles.glyphWrap}>
+                      <Text style={styles.glyph}>{item.zodiacGlyph}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardDate}>{item.date}</Text>
+                      <Text style={styles.cardHeadline}>{item.headline}</Text>
+                    </View>
+                    <Pressable
+                      onPress={() => onDelete(item.id)}
+                      accessibilityLabel="Delete insight"
+                      hitSlop={10}
+                    >
+                      <CosmicIcon name="close" color={colors.textMuted} size={16} />
+                    </Pressable>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardDate}>{item.date}</Text>
-                    <Text style={styles.cardHeadline}>{item.headline}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => onDelete(item.id)}
-                    accessibilityLabel="Delete insight"
-                    hitSlop={10}
-                  >
-                    <CosmicIcon name="close" color={colors.textMuted} size={16} />
-                  </Pressable>
-                </View>
-                <Text style={styles.cardBody} numberOfLines={4}>
-                  {item.body}
-                </Text>
-              </GlassCard>
+                  <Text style={styles.cardBody} numberOfLines={4}>
+                    {item.body}
+                  </Text>
+                </GlassCard>
+              </Pressable>
             )}
           />
         )}
