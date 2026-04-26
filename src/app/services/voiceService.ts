@@ -1,5 +1,9 @@
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+// SDK 55 split expo-file-system into a "next" API + a /legacy subpath that
+// keeps EncodingType / readAsStringAsync / deleteAsync. We use the legacy
+// API here because the new one is async-iterator-shaped and would need a
+// full rewrite for no functional gain.
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 import { env, features } from '../config/env';
