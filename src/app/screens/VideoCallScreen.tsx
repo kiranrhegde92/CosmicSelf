@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +23,7 @@ import Paywall from '../components/ui/Paywall';
 import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { usePremium } from '../store/usePremium';
+import { haptics } from '../services/hapticsService';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
@@ -53,12 +54,44 @@ export default function VideoCallScreen() {
     }, [isPremium, showPaywall]),
   );
 
+  // Pause the cycling status labels while the user has muted themselves —
+  // it would feel weird for the astrologer to keep "listening" when you're
+  // not talking. Resume from where we left off when un-muted.
   useEffect(() => {
+    if (muted) return;
     const t = setInterval(() => {
       setStateIdx((i) => (i + 1) % STATES.length);
     }, 3500);
     return () => clearInterval(t);
-  }, []);
+  }, [muted]);
+
+  const onToggleMic = () => {
+    haptics.tap();
+    setMuted((m) => !m);
+  };
+
+  const onToggleVideo = () => {
+    haptics.tap();
+    setVideo((v) => !v);
+  };
+
+  const onEndCall = () => {
+    Alert.alert(
+      'End the session?',
+      "Your astrologer will stop reading your energy. You can come back anytime.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'End',
+          style: 'destructive',
+          onPress: () => {
+            haptics.thump();
+            navigation.goBack();
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <CosmicBackground variant="chamber" intensity="medium">
@@ -94,9 +127,15 @@ export default function VideoCallScreen() {
                 <ZodiacWheel size={300} rotateSpeed={45000} intensity="high" />
               </View>
             </View>
-            <AuraRing size={250} active intensity="strong" />
-            <View style={styles.avatarFrame}>
+            <AuraRing size={250} active={!muted} intensity={muted ? 'soft' : 'strong'} />
+            <View style={[styles.avatarFrame, !video && styles.avatarFrameOff]}>
               <AstrologerAvatar visualKey={astrologer.visualKey} size={210} />
+              {!video && (
+                <View style={styles.cameraOffOverlay}>
+                  <CosmicIcon name="video-off" color={colors.goldBright} size={22} />
+                  <Text style={styles.cameraOffLabel}>Camera paused</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -109,33 +148,42 @@ export default function VideoCallScreen() {
         <GlassCard style={styles.statusCard}>
           <View style={styles.statusInner}>
             <View style={styles.audioWaveWrap}>
-              <CosmicIcon name="sparkle" color={colors.goldBright} size={18} />
+              <CosmicIcon
+                name={muted ? 'mic-off' : 'sparkle'}
+                color={muted ? colors.textMuted : colors.goldBright}
+                size={18}
+              />
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <Text style={styles.statusTitle}>{STATES[stateIdx]}…</Text>
-              <Text style={styles.statusSub}>Reading your cosmic patterns</Text>
+              <Text style={styles.statusTitle}>
+                {muted ? 'You\'re muted' : `${STATES[stateIdx]}…`}
+              </Text>
+              <Text style={styles.statusSub}>
+                {muted ? 'Tap the mic to resume' : 'Reading your cosmic patterns'}
+              </Text>
             </View>
-            <AudioWave />
+            {!muted && <AudioWave />}
           </View>
         </GlassCard>
 
         <View style={styles.controls}>
           <CallButton
             icon={video ? 'video' : 'video-off'}
-            label="Flip Camera"
-            onPress={() => setVideo((v) => !v)}
+            label={video ? 'Camera On' : 'Camera Off'}
+            onPress={onToggleVideo}
+            active={video}
           />
           <CallButton
             icon="phone-end"
             danger
             big
             label="End Call"
-            onPress={() => navigation.goBack()}
+            onPress={onEndCall}
           />
           <CallButton
             icon={muted ? 'mic-off' : 'mic'}
-            label="Mute"
-            onPress={() => setMuted((m) => !m)}
+            label={muted ? 'Muted' : 'Live'}
+            onPress={onToggleMic}
             active={!muted}
           />
         </View>
@@ -372,6 +420,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
+  },
+  avatarFrameOff: {
+    opacity: 0.45,
+    borderColor: colors.textMuted,
+    shadowOpacity: 0.15,
+  },
+  cameraOffOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(8,8,23,0.5)',
+  },
+  cameraOffLabel: {
+    ...typography.caption,
+    color: colors.goldBright,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 0.6,
   },
   statusCard: {
     marginHorizontal: spacing.screenH,
