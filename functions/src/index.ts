@@ -4,6 +4,7 @@ import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
+import * as functionsV1 from 'firebase-functions/v1';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
 
@@ -830,3 +831,91 @@ export const dailyHoroscopePush = onSchedule(
     console.log(`dailyHoroscopePush: sent ${pending.length}, errors ${tickets.filter((t) => t.status === 'error').length}`);
   },
 );
+
+/* -------------------------------------------------------------------------- */
+/* Welcome email on signup.                                                   */
+/*                                                                            */
+/* Auth onCreate writes a doc to the `mail/` collection in the format the    */
+/* official Firebase "Trigger Email from Firestore" extension consumes. The  */
+/* extension actually delivers via SMTP/SendGrid/Mailgun (configured at      */
+/* extension install time, no code change here).                              */
+/*                                                                            */
+/* Why v1 onCreate: v2 only exposes blocking Auth triggers (beforeUserCreated*/
+/* / beforeUserSignedIn) which run synchronously and can reject signup. We   */
+/* want a fire-and-forget welcome that never blocks login. v1 auth onCreate  */
+/* is still supported in firebase-functions v6.                               */
+/*                                                                            */
+/* Setup checklist (one-time):                                                */
+/*   1. Install the "Trigger Email from Firestore" Firebase Extension into   */
+/*      your project: ext-firestore-send-email                                */
+/*   2. Configure it with an SMTP / SendGrid / Mailgun connection string     */
+/*   3. Point it at the `mail` collection                                     */
+/*   4. (Optional) configure default `from` address                           */
+/* -------------------------------------------------------------------------- */
+
+function welcomeMessageFor(name: string | null | undefined): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const greeting = name ? `Welcome, ${name}` : 'Welcome to CosmicSelf';
+  const text =
+    `${greeting}.\n\n` +
+    `The stars have been waiting for you. Open the app to set your birth ` +
+    `details and unlock your personalized chart, daily transits, and ` +
+    `synastry compatibility.\n\n` +
+    `— The CosmicSelf team`;
+  const html =
+    `<div style="font-family: -apple-system, system-ui, sans-serif; line-height: 1.5;">` +
+    `<h2 style="color:#F6C85F; margin: 0 0 16px;">${greeting} ✦</h2>` +
+    `<p>The stars have been waiting for you.</p>` +
+    `<p>Open the app to set your birth details and unlock your personalized ` +
+    `chart, daily transits, and synastry compatibility.</p>` +
+    `<p style="margin-top: 32px; color:#888;">— The CosmicSelf team</p>` +
+    `</div>`;
+  return {
+    subject: 'Welcome to CosmicSelf ✦',
+    text,
+    html,
+  };
+}
+
+export const sendWelcomeEmail = functionsV1.auth.user().onCreate(async (user) => {
+  if (!user.email) return;
+
+  const { subject, text, html } = welcomeMessageFor(user.displayName);
+
+  const db = admin.firestore();
+
+  // Idempotency guard: if we've already queued one for this uid, skip.
+  // (The Auth trigger fires once per user creation but defensive coding
+  // protects us against retries / double-deliveries.)
+  const onboardingRef = db.doc(`users/${user.uid}/profile/onboarding`);
+  try {
+    const snap = await onboardingRef.get();
+    if (snap.data()?.welcomeQueuedAt) {
+      console.log('sendWelcomeEmail: already queued, skipping', { uid: user.uid });
+      return;
+    }
+  } catch {
+    /* fall through — worst case we queue twice */
+  }
+
+  try {
+    await db.collection('mail').add({
+      to: [user.email],
+      message: { subject, text, html },
+      // Useful for debugging in the queue collection.
+      uid: user.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await onboardingRef.set(
+      {
+        welcomeQueuedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error('sendWelcomeEmail: failed to queue', { uid: user.uid, err });
+  }
+});

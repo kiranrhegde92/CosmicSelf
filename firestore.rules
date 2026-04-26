@@ -34,6 +34,22 @@ service cloud.firestore {
       match /partners/{partnerId} {
         allow read, write: if isOwner(uid);
       }
+
+      // Per-user/per-day usage counters are written by the chat Cloud
+      // Function via the Admin SDK (which bypasses these rules). Clients
+      // read their own counters for "you've used N of M" UI.
+      match /usage/{day} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+    }
+
+    // Email queue consumed by the firestore-send-email extension. Only
+    // server (Admin SDK / extension service account) writes here. No
+    // client should ever read these — they may contain other users'
+    // addresses while in flight.
+    match /mail/{messageId} {
+      allow read, write: if false;
     }
   }
 }
