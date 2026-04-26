@@ -12,6 +12,7 @@ import Skeleton from '../components/ui/Skeleton';
 import BirthChartPreview from '../components/astrology/BirthChartPreview';
 import CosmicIcon, { IconName } from '../components/ui/CosmicIcon';
 import { astrologyService, ChartCardData } from '../services/astrologyService';
+import type { NatalChart } from '../services/astroEngine';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
@@ -31,11 +32,17 @@ const items: {
 export default function BirthChartScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [chart, setChart] = useState<ChartCardData | null>(null);
+  const [natal, setNatal] = useState<NatalChart | null>(null);
 
   useEffect(() => {
     let active = true;
-    astrologyService.getBirthChart().then((c) => {
-      if (active) setChart(c);
+    Promise.all([
+      astrologyService.getBirthChart(),
+      astrologyService.getNatalChart(),
+    ]).then(([c, n]) => {
+      if (!active) return;
+      setChart(c);
+      setNatal(n);
     });
     return () => {
       active = false;
@@ -51,7 +58,7 @@ export default function BirthChartScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.chartWrap}>
-            <BirthChartPreview size={300} />
+            <BirthChartPreview size={300} chart={natal} />
           </View>
 
           <View style={styles.grid}>

@@ -19,24 +19,55 @@ import Svg, {
 } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
+import type { NatalChart } from '../../services/astroEngine';
 
 const SIGNS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
-const PLANETS: { glyph: string; angle: number; r: number; color: string; label: string }[] = [
-  { glyph: '☉', angle: 30, r: 0.55, color: '#FFD98A', label: 'Sun' },
-  { glyph: '☽', angle: 110, r: 0.6, color: '#E0CDFF', label: 'Moon' },
-  { glyph: '☿', angle: 165, r: 0.5, color: '#9AE2FF', label: 'Mercury' },
-  { glyph: '♀', angle: 215, r: 0.62, color: '#FFAFD7', label: 'Venus' },
-  { glyph: '♂', angle: 275, r: 0.5, color: '#FF8A6B', label: 'Mars' },
-  { glyph: '♃', angle: 330, r: 0.58, color: '#F6C85F', label: 'Jupiter' },
+
+type RenderedPlanet = {
+  glyph: string;
+  /** Ecliptic longitude in degrees [0, 360). 0° = Aries point. */
+  longitude: number;
+  color: string;
+  label: string;
+};
+
+const FALLBACK_PLANETS: RenderedPlanet[] = [
+  { glyph: '☉', longitude: 30, color: '#FFD98A', label: 'Sun' },
+  { glyph: '☽', longitude: 110, color: '#E0CDFF', label: 'Moon' },
+  { glyph: '☿', longitude: 165, color: '#9AE2FF', label: 'Mercury' },
+  { glyph: '♀', longitude: 215, color: '#FFAFD7', label: 'Venus' },
+  { glyph: '♂', longitude: 275, color: '#FF8A6B', label: 'Mars' },
+  { glyph: '♃', longitude: 330, color: '#F6C85F', label: 'Jupiter' },
 ];
+
+function chartToPlanets(chart: NatalChart): RenderedPlanet[] {
+  // Map the natal chart's known points to the SVG planets. Ascendant gets a
+  // tiny upward arrow glyph since it isn't a planet.
+  return [
+    { glyph: '☉', longitude: chart.sun.longitude, color: '#FFD98A', label: 'Sun' },
+    { glyph: '☽', longitude: chart.moon.longitude, color: '#E0CDFF', label: 'Moon' },
+    {
+      glyph: '↑',
+      longitude: chart.ascendant.longitude,
+      color: '#7AC0FF',
+      label: 'Ascendant',
+    },
+  ];
+}
 
 type Props = {
   size?: number;
   rotate?: boolean;
+  /**
+   * Optional natal chart. When provided, the planet markers move to the
+   * actual ecliptic longitudes for Sun / Moon / Ascendant. Without it, a
+   * decorative six-planet layout is rendered instead.
+   */
+  chart?: NatalChart | null;
   style?: StyleProp<ViewStyle>;
 };
 
-function BirthChartPreview({ size = 300, rotate = true, style }: Props) {
+function BirthChartPreview({ size = 300, rotate = true, chart, style }: Props) {
   const r = size / 2;
   const outerR = r * 0.92;
   const midR = r * 0.78;
@@ -57,6 +88,13 @@ function BirthChartPreview({ size = 300, rotate = true, style }: Props) {
   const wheelStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
+
+  const planets = chart ? chartToPlanets(chart) : FALLBACK_PLANETS;
+
+  // Build aspect lines between every pair of rendered planets that sit
+  // within 8° of a major aspect (only for the live path — the decorative
+  // fallback uses the static lines below for visual interest).
+  const aspectLines = chart ? buildAspectLines(planets, innerR, r) : null;
 
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
@@ -124,30 +162,34 @@ function BirthChartPreview({ size = 300, rotate = true, style }: Props) {
 
           {/* aspect lines */}
           <G stroke={colors.goldMuted} strokeWidth={0.7} strokeOpacity={0.5}>
-            {[
-              [30, 215],
-              [110, 275],
-              [165, 330],
-              [30, 110],
-              [215, 330],
-            ].map(([a1, a2], i) => {
-              const r1 = (a1 * Math.PI) / 180;
-              const r2 = (a2 * Math.PI) / 180;
-              return (
-                <Line
-                  key={`aspect-${i}`}
-                  x1={r + Math.cos(r1) * innerR}
-                  y1={r + Math.sin(r1) * innerR}
-                  x2={r + Math.cos(r2) * innerR}
-                  y2={r + Math.sin(r2) * innerR}
-                />
-              );
-            })}
+            {aspectLines ??
+              [
+                [30, 215],
+                [110, 275],
+                [165, 330],
+                [30, 110],
+                [215, 330],
+              ].map(([a1, a2], i) => {
+                const r1 = (a1 * Math.PI) / 180;
+                const r2 = (a2 * Math.PI) / 180;
+                return (
+                  <Line
+                    key={`aspect-${i}`}
+                    x1={r + Math.cos(r1) * innerR}
+                    y1={r + Math.sin(r1) * innerR}
+                    x2={r + Math.cos(r2) * innerR}
+                    y2={r + Math.sin(r2) * innerR}
+                  />
+                );
+              })}
           </G>
 
           {/* planets */}
-          {PLANETS.map((p, i) => {
-            const a = (p.angle * Math.PI) / 180;
+          {planets.map((p, i) => {
+            // Astrology convention: 0° is to the LEFT (east) and rotation is
+            // counter-clockwise. SVG's atan2 gives 0° to the right going
+            // clockwise, so we flip with (180 - lon).
+            const a = ((180 - p.longitude) * Math.PI) / 180;
             const x = r + Math.cos(a) * planetR;
             const y = r + Math.sin(a) * planetR;
             return (
@@ -171,6 +213,39 @@ function BirthChartPreview({ size = 300, rotate = true, style }: Props) {
       </Animated.View>
     </View>
   );
+}
+
+const ASPECT_TARGETS = [0, 60, 90, 120, 180];
+const ASPECT_ORB = 8;
+
+function buildAspectLines(
+  planets: RenderedPlanet[],
+  innerR: number,
+  r: number,
+): React.ReactElement[] {
+  const lines: React.ReactElement[] = [];
+  for (let i = 0; i < planets.length; i += 1) {
+    for (let j = i + 1; j < planets.length; j += 1) {
+      const a = planets[i].longitude;
+      const b = planets[j].longitude;
+      const sep = Math.abs(((a - b) % 360 + 540) % 360 - 180);
+      const within = ASPECT_TARGETS.find((t) => Math.abs(sep - t) <= ASPECT_ORB);
+      if (within === undefined) continue;
+      const ra = ((180 - a) * Math.PI) / 180;
+      const rb = ((180 - b) * Math.PI) / 180;
+      lines.push(
+        <Line
+          key={`aspect-${i}-${j}`}
+          x1={r + Math.cos(ra) * innerR}
+          y1={r + Math.sin(ra) * innerR}
+          x2={r + Math.cos(rb) * innerR}
+          y2={r + Math.sin(rb) * innerR}
+          strokeOpacity={0.6}
+        />,
+      );
+    }
+  }
+  return lines;
 }
 
 export default React.memo(BirthChartPreview);
