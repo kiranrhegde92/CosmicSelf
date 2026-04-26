@@ -6,6 +6,18 @@ import { setGlobalOptions } from 'firebase-functions/v2';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
 
+import {
+  type ChatMessage,
+  validateChatPayload,
+} from './lib/validate';
+import {
+  type Tier,
+  isOverCap,
+  normalizeTier,
+  quotaErrorMessage,
+} from './lib/quota';
+import { ALLOWED_AUDIO_MIME, MAX_AUDIO_BYTES, extForMime } from './lib/mime';
+
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
 if (!admin.apps.length) admin.initializeApp();
@@ -32,41 +44,6 @@ const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 /** Used by the transcribeAudio function (OpenAI Whisper). Optional —
  * if absent, the voice button on the client falls back to mock transcription. */
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
-const DEFAULT_MODEL = 'claude-haiku-4-5';
-
-type ChatMessage = { role: 'user' | 'assistant'; content: string };
-
-type Payload = {
-  message: string;
-  systemPrompt?: string;
-  history?: ChatMessage[];
-  model?: string;
-  maxTokens?: number;
-};
-
-const ALLOWED_MODELS = new Set([
-  'claude-haiku-4-5',
-  'claude-sonnet-4-6',
-  'claude-opus-4-7',
-]);
-
-function sanitizeHistory(input: unknown): ChatMessage[] {
-  if (!Array.isArray(input)) return [];
-  const cleaned: ChatMessage[] = [];
-  for (const m of input) {
-    if (!m || typeof m !== 'object') continue;
-    const role = (m as { role?: unknown }).role;
-    const content = (m as { content?: unknown }).content;
-    if ((role === 'user' || role === 'assistant') && typeof content === 'string') {
-      cleaned.push({ role, content: content.slice(0, 4000) });
-    }
-  }
-  return cleaned.slice(-20);
-}
-
-function clamp(n: number, lo: number, hi: number) {
-  return Math.min(Math.max(n, lo), hi);
-}
 
 /* -------------------------------------------------------------------------- */
 /* Token usage logging.                                                       */
@@ -103,22 +80,13 @@ function todayKey(): string {
 /* over-claiming their own tier.                                              */
 /* -------------------------------------------------------------------------- */
 
-type Tier = 'free' | 'pro' | 'master';
-
-const DAILY_CHAT_CAP: Record<Tier, number> = {
-  free: 20,
-  pro: 200,
-  master: Number.POSITIVE_INFINITY,
-};
-
 async function getTier(uid: string): Promise<Tier> {
   try {
     const snap = await admin
       .firestore()
       .doc(`users/${uid}/profile/entitlement`)
       .get();
-    const tier = (snap.data()?.tier ?? 'free') as Tier;
-    return tier === 'pro' || tier === 'master' ? tier : 'free';
+    return normalizeTier(snap.data()?.tier);
   } catch {
     return 'free';
   }
@@ -138,14 +106,8 @@ async function getTodayChatCalls(uid: string): Promise<number> {
 
 async function enforceQuota(uid: string): Promise<void> {
   const [tier, used] = await Promise.all([getTier(uid), getTodayChatCalls(uid)]);
-  const cap = DAILY_CHAT_CAP[tier];
-  if (used >= cap) {
-    throw new HttpsError(
-      'resource-exhausted',
-      tier === 'free'
-        ? 'Daily limit reached on the free tier. Upgrade for more.'
-        : 'Daily limit reached. Try again tomorrow.',
-    );
+  if (isOverCap(tier, used)) {
+    throw new HttpsError('resource-exhausted', quotaErrorMessage(tier));
   }
 }
 
@@ -255,17 +217,7 @@ function validatePayload(raw: unknown): {
   model: string;
   maxTokens: number;
 } {
-  const data = (raw ?? {}) as Payload;
-  const message = (data.message ?? '').toString().trim();
-  if (!message) throw new Error('Message is required.');
-  if (message.length > 4000) throw new Error('Message is too long.');
-  return {
-    message,
-    systemPrompt: (data.systemPrompt ?? '').toString().slice(0, 8000),
-    history: sanitizeHistory(data.history),
-    model: ALLOWED_MODELS.has(data.model ?? '') ? data.model! : DEFAULT_MODEL,
-    maxTokens: clamp(data.maxTokens ?? 512, 64, 1024),
-  };
+  return validateChatPayload(raw);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -487,20 +439,6 @@ export const astrologerChatStream = onRequest(
 /* can fall back to its mock transcription path.                              */
 /* -------------------------------------------------------------------------- */
 
-const ALLOWED_MIME = new Set([
-  'audio/m4a',
-  'audio/mp4',
-  'audio/x-m4a',
-  'audio/mpeg',
-  'audio/mp3',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/webm',
-  'audio/ogg',
-]);
-
-const MAX_AUDIO_BYTES = 8 * 1024 * 1024; // 8 MB raw
-
 export const transcribeAudio = onRequest(
   {
     secrets: [OPENAI_API_KEY],
@@ -546,7 +484,7 @@ export const transcribeAudio = onRequest(
     };
 
     const mimeType = body.mimeType ?? 'audio/m4a';
-    if (!ALLOWED_MIME.has(mimeType)) {
+    if (!ALLOWED_AUDIO_MIME.has(mimeType)) {
       res.status(400).json({ error: `Unsupported mime type: ${mimeType}` });
       return;
     }
@@ -571,7 +509,7 @@ export const transcribeAudio = onRequest(
 
     try {
       const client = new OpenAI({ apiKey });
-      const file = await toFile(buffer, body.filename ?? `audio.${extFor(mimeType)}`, {
+      const file = await toFile(buffer, body.filename ?? `audio.${extForMime(mimeType)}`, {
         type: mimeType,
       });
       const transcription = await client.audio.transcriptions.create({
@@ -592,14 +530,6 @@ export const transcribeAudio = onRequest(
   },
 );
 
-function extFor(mime: string): string {
-  if (mime.includes('m4a') || mime.includes('mp4')) return 'm4a';
-  if (mime.includes('mp3') || mime.includes('mpeg')) return 'mp3';
-  if (mime.includes('wav')) return 'wav';
-  if (mime.includes('webm')) return 'webm';
-  if (mime.includes('ogg')) return 'ogg';
-  return 'bin';
-}
 
 /* -------------------------------------------------------------------------- */
 /* Account deletion — GDPR / App Store compliance.                            */
