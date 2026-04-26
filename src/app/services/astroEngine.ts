@@ -178,3 +178,156 @@ export function computeNatalChart(input: BirthInput): NatalChart {
     },
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Transits                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export type TransitingPlanet =
+  | 'Sun'
+  | 'Moon'
+  | 'Mercury'
+  | 'Venus'
+  | 'Mars'
+  | 'Jupiter'
+  | 'Saturn';
+
+export type NatalPoint = 'sun' | 'moon' | 'ascendant';
+
+export type AspectType =
+  | 'conjunction'
+  | 'sextile'
+  | 'square'
+  | 'trine'
+  | 'opposition';
+
+export type Transit = {
+  transiting: TransitingPlanet;
+  natal: NatalPoint;
+  aspect: AspectType;
+  /** Distance from the exact aspect angle in degrees. 0 = exact. */
+  orb: number;
+  /** 0..1 score; closer to exact and stronger aspect rank higher. */
+  strength: number;
+  /** Sign the transiting planet sits in today. */
+  transitingSign: string;
+};
+
+const ASPECT_ANGLES: Record<AspectType, number> = {
+  conjunction: 0,
+  sextile: 60,
+  square: 90,
+  trine: 120,
+  opposition: 180,
+};
+
+// Tighter orbs for minor aspects, wider for the big three. Empirically a
+// good compromise for a single daily reading.
+const ASPECT_ORBS: Record<AspectType, number> = {
+  conjunction: 6,
+  opposition: 6,
+  trine: 6,
+  square: 5,
+  sextile: 4,
+};
+
+const TRANSITING_BODIES: { name: TransitingPlanet; body: typeof Body[keyof typeof Body] }[] = [
+  { name: 'Sun', body: Body.Sun },
+  { name: 'Moon', body: Body.Moon },
+  { name: 'Mercury', body: Body.Mercury },
+  { name: 'Venus', body: Body.Venus },
+  { name: 'Mars', body: Body.Mars },
+  { name: 'Jupiter', body: Body.Jupiter },
+  { name: 'Saturn', body: Body.Saturn },
+];
+
+function planetLongitude(body: typeof Body[keyof typeof Body], date: Date): number {
+  if (body === Body.Moon) {
+    return Ecliptic(GeoMoon(date)).elon;
+  }
+  const vec = GeoVector(body, date, false);
+  return Ecliptic(vec).elon;
+}
+
+function angularSeparation(a: number, b: number): number {
+  const diff = Math.abs(((a - b) % 360 + 540) % 360 - 180);
+  // ↑ folded to [0, 180]
+  return diff;
+}
+
+function rankPlanetWeight(p: TransitingPlanet): number {
+  // Outer planets carry more karmic weight in a daily reading; the Moon is
+  // weighted slightly down because its aspects rotate quickly through the day.
+  switch (p) {
+    case 'Saturn':
+      return 1.0;
+    case 'Jupiter':
+      return 0.95;
+    case 'Mars':
+      return 0.9;
+    case 'Venus':
+      return 0.9;
+    case 'Mercury':
+      return 0.85;
+    case 'Sun':
+      return 0.85;
+    case 'Moon':
+      return 0.75;
+  }
+}
+
+function aspectWeight(a: AspectType): number {
+  switch (a) {
+    case 'conjunction':
+      return 1.0;
+    case 'opposition':
+      return 0.95;
+    case 'trine':
+      return 0.9;
+    case 'square':
+      return 0.9;
+    case 'sextile':
+      return 0.8;
+  }
+}
+
+/**
+ * Compute every aspect within orb between the major transiting planets and
+ * the natal Sun / Moon / Ascendant on the given date. Sorted by strength,
+ * strongest first.
+ */
+export function computeTransits(chart: NatalChart, when: Date): Transit[] {
+  const natalPoints: { name: NatalPoint; lon: number }[] = [
+    { name: 'sun', lon: chart.sun.longitude },
+    { name: 'moon', lon: chart.moon.longitude },
+    { name: 'ascendant', lon: chart.ascendant.longitude },
+  ];
+
+  const out: Transit[] = [];
+  for (const tp of TRANSITING_BODIES) {
+    const lon = planetLongitude(tp.body, when);
+    const transitingSign = eclipticToSign(lon).sign;
+    for (const np of natalPoints) {
+      const sep = angularSeparation(lon, np.lon);
+      for (const aspect of Object.keys(ASPECT_ANGLES) as AspectType[]) {
+        const orb = Math.abs(sep - ASPECT_ANGLES[aspect]);
+        if (orb <= ASPECT_ORBS[aspect]) {
+          const closeness = 1 - orb / ASPECT_ORBS[aspect]; // 0..1
+          const strength =
+            closeness * aspectWeight(aspect) * rankPlanetWeight(tp.name);
+          out.push({
+            transiting: tp.name,
+            natal: np.name,
+            aspect,
+            orb,
+            strength,
+            transitingSign,
+          });
+        }
+      }
+    }
+  }
+
+  out.sort((a, b) => b.strength - a.strength);
+  return out;
+}

@@ -3,6 +3,11 @@ import {
   ZODIAC_GLYPHS,
   type NatalChart,
 } from './astroEngine';
+import {
+  notificationBlurbFor,
+  synthesizeDailyInsight,
+  type DailyInsight,
+} from './dailyInsightEngine';
 import { birthChart, dailyInsight, compatibility } from '../data/mockInsights';
 import {
   getBirthInputFromStore,
@@ -57,18 +62,19 @@ function chartToCards(chart: NatalChart): ChartCardData {
 }
 
 export const astrologyService = {
-  async getDailyInsight() {
+  async getDailyInsight(when: Date = new Date()): Promise<DailyInsight | typeof dailyInsight> {
     const state = useOnboardingStore.getState();
     const input = getBirthInputFromStore(state);
     if (!input) return dailyInsight;
+    return synthesizeDailyInsight(input, when);
+  },
 
-    const chart = computeNatalChart(input);
-    const sign = chart.sun.sign;
-    return {
-      ...dailyInsight,
-      zodiac: sign,
-      zodiacGlyph: ZODIAC_GLYPHS[sign] ?? '✦',
-    };
+  /** Personalized one-liner for the morning push notification. */
+  async getDailyNotificationBlurb(when: Date = new Date()): Promise<string | null> {
+    const state = useOnboardingStore.getState();
+    const input = getBirthInputFromStore(state);
+    if (!input) return null;
+    return notificationBlurbFor(synthesizeDailyInsight(input, when));
   },
 
   async getBirthChart(): Promise<ChartCardData> {

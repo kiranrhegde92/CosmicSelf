@@ -15,19 +15,20 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { dailyInsight as mockDailyInsight } from '../data/mockInsights';
 import { astrologyService } from '../services/astrologyService';
+import type { DailyInsight } from '../services/dailyInsightEngine';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
 import { MainStackParamList } from '../navigation/routes';
 
 export default function DailyInsightScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const [insight, setInsight] = useState(mockDailyInsight);
+  const [insight, setInsight] = useState<DailyInsight>(mockDailyInsight as DailyInsight);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let active = true;
     astrologyService.getDailyInsight().then((d) => {
-      if (active) setInsight(d);
+      if (active) setInsight(d as DailyInsight);
     });
     return () => {
       active = false;
