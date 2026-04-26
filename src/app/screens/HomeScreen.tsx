@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
+import CoachMark from '../components/ui/CoachMark';
 import CosmicIcon, { IconName } from '../components/ui/CosmicIcon';
 import Paywall from '../components/ui/Paywall';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
@@ -142,6 +143,13 @@ export default function HomeScreen() {
         <Paywall
           visible={premium.paywallVisible}
           onClose={premium.hidePaywall}
+        />
+
+        <CoachMark
+          storageKey="home.askbar"
+          icon="sparkle"
+          title="Ask the stars, anytime"
+          body="Type a question in the bar at the bottom and we'll route it straight to your astrologer's chamber."
         />
       </SafeAreaView>
     </CosmicBackground>
