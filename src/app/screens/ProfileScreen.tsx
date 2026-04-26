@@ -20,11 +20,11 @@ import { MainStackParamList } from '../navigation/routes';
 
 const MENU: { key: string; label: string; icon: IconName; route?: keyof MainStackParamList }[] = [
   { key: 'chart', label: 'My Birth Chart', icon: 'chart', route: 'BirthChart' as any },
-  { key: 'saved', label: 'Saved Insights', icon: 'star' },
-  { key: 'astrologer', label: 'My Astrologer', icon: 'sparkle' },
+  { key: 'saved', label: 'Saved Insights', icon: 'star', route: 'SavedInsights' },
+  { key: 'astrologer', label: 'My Astrologer', icon: 'sparkle', route: 'EditAstrologer' },
   { key: 'subscription', label: 'Subscription', icon: 'crown', route: 'Subscription' },
   { key: 'settings', label: 'Settings', icon: 'settings', route: 'Settings' },
-  { key: 'privacy', label: 'Privacy', icon: 'shield' },
+  { key: 'privacy', label: 'Privacy', icon: 'shield', route: 'Placeholder' as any },
 ];
 
 export default function ProfileScreen() {
@@ -72,7 +72,20 @@ export default function ProfileScreen() {
               <Pressable
                 key={m.key}
                 style={styles.menuRow}
-                onPress={() => m.route && navigation.navigate(m.route as any)}
+                onPress={() => {
+                  if (!m.route) return;
+                  if (m.key === 'privacy') {
+                    navigation.navigate('Placeholder', {
+                      title: 'Privacy',
+                      subtitle: 'Your data, your stars',
+                      icon: 'shield',
+                      body:
+                        'CosmicSelf stores only what you tell it: your birth details, saved insights, and chats with your astrologer. Everything is scoped to your account by Firestore Rules and never shared with third parties.',
+                    });
+                    return;
+                  }
+                  navigation.navigate(m.route as any);
+                }}
                 accessibilityLabel={m.label}
               >
                 <View style={styles.menuIcon}>

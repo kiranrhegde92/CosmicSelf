@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -19,7 +20,10 @@ import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { useAppStore } from '../store/appStore';
+import { useAuthStore } from '../store/authStore';
+import { useOnboardingStore } from '../store/onboardingStore';
 import { notificationsService } from '../services/notificationsService';
+import { savedInsightsRepository } from '../services/savedInsightsRepository';
 import { MainStackParamList } from '../navigation/routes';
 
 type ItemType = 'switch' | 'navigate' | 'value';
@@ -141,6 +145,83 @@ export default function SettingsScreen() {
     if (key === 'sound') return setSoundscape(!soundscape);
   };
 
+  const exportData = async () => {
+    const auth = useAuthStore.getState();
+    const onboarding = useOnboardingStore.getState();
+    const saved = await savedInsightsRepository.list();
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      user: auth.user,
+      birth: {
+        date: onboarding.birthDate,
+        time: onboarding.birthTime,
+        location: onboarding.birthLocation,
+      },
+      astrologer: onboarding.selectedAstrologerId,
+      mode: onboarding.mode,
+      savedInsights: saved,
+    };
+    try {
+      await Share.share({
+        title: 'CosmicSelf data export',
+        message: JSON.stringify(payload, null, 2),
+      });
+    } catch {
+      /* user dismissed */
+    }
+  };
+
+  const onRowPress = (key: string, route?: keyof MainStackParamList) => {
+    if (route) return navigation.navigate(route as any);
+    switch (key) {
+      case 'edit':
+        return navigation.navigate('EditProfile');
+      case 'birth':
+        return navigation.navigate('EditBirthDetails');
+      case 'mychan':
+        return navigation.navigate('EditAstrologer');
+      case 'mode':
+        return navigation.navigate('EditAstrologer');
+      case 'language':
+        return navigation.navigate('Placeholder', {
+          title: 'Language',
+          subtitle: 'More tongues, more stars',
+          icon: 'orbit',
+          body:
+            'Localization is on the roadmap. CosmicSelf currently speaks English; Hindi, Spanish, and Portuguese are queued for the next release.',
+        });
+      case 'theme':
+        setThemeMode(themeMode === 'default' ? 'glass' : 'default');
+        return;
+      case 'data':
+        return navigation.navigate('Placeholder', {
+          title: 'Data & Permissions',
+          subtitle: 'What we keep, what we don’t',
+          icon: 'shield',
+          body:
+            'Your birth details, saved insights, and chat transcripts live in your private Firestore document, scoped by your account. Notifications are scheduled locally on this device. We never share your data with advertisers.',
+        });
+      case 'export':
+        return exportData();
+      case 'faq':
+        return navigation.navigate('Placeholder', {
+          title: 'FAQ',
+          subtitle: 'Cosmic questions answered',
+          icon: 'info',
+          body:
+            'Common questions are getting their own home soon. Until then, the in-app astrologer can answer most things — try asking them directly.',
+        });
+      case 'contact':
+        return navigation.navigate('Placeholder', {
+          title: 'Contact Support',
+          subtitle: 'We’re listening',
+          icon: 'chat',
+          body:
+            'Email support@cosmicself.app and we’ll respond within two business days. Include the version number from this screen for faster help.',
+        });
+    }
+  };
+
   return (
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
@@ -166,10 +247,7 @@ export default function SettingsScreen() {
                     ]}
                     onPress={() => {
                       if (item.type === 'switch') return onToggle(item.key);
-                      if (item.route) navigation.navigate(item.route as any);
-                      if (item.key === 'theme') {
-                        setThemeMode(themeMode === 'default' ? 'glass' : 'default');
-                      }
+                      onRowPress(item.key, item.route);
                     }}
                     accessibilityLabel={item.label}
                   >

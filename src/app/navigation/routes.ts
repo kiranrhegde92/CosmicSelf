@@ -17,7 +17,14 @@ export const MAIN_ROUTES = {
   Subscription: 'Subscription',
   Profile: 'Profile',
   Settings: 'Settings',
+  EditProfile: 'EditProfile',
+  EditBirthDetails: 'EditBirthDetails',
+  EditAstrologer: 'EditAstrologer',
+  SavedInsights: 'SavedInsights',
+  Placeholder: 'Placeholder',
 } as const;
+
+import type { IconName } from '../components/ui/CosmicIcon';
 
 export type AuthStackParamList = {
   Splash: undefined;
@@ -25,6 +32,13 @@ export type AuthStackParamList = {
   Signup: undefined;
   BirthDetails: undefined;
   AstrologerSelection: undefined;
+};
+
+export type PlaceholderParams = {
+  title: string;
+  subtitle?: string;
+  body?: string;
+  icon?: IconName;
 };
 
 export type MainStackParamList = {
@@ -37,6 +51,11 @@ export type MainStackParamList = {
   Subscription: undefined;
   Profile: undefined;
   Settings: undefined;
+  EditProfile: undefined;
+  EditBirthDetails: undefined;
+  EditAstrologer: undefined;
+  SavedInsights: undefined;
+  Placeholder: PlaceholderParams;
 };
 
 export type TabParamList = {

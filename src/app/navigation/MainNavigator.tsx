@@ -11,6 +11,11 @@ import CompatibilityScreen from '../screens/CompatibilityScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import EditBirthDetailsScreen from '../screens/EditBirthDetailsScreen';
+import EditAstrologerScreen from '../screens/EditAstrologerScreen';
+import SavedInsightsScreen from '../screens/SavedInsightsScreen';
+import PlaceholderScreen from '../screens/PlaceholderScreen';
 
 import BottomNav from '../components/ui/BottomNav';
 import { MainStackParamList, TabParamList } from './routes';
@@ -48,6 +53,11 @@ export default function MainNavigator() {
       <Stack.Screen name="Compatibility" component={CompatibilityScreen} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="EditBirthDetails" component={EditBirthDetailsScreen} />
+      <Stack.Screen name="EditAstrologer" component={EditAstrologerScreen} />
+      <Stack.Screen name="SavedInsights" component={SavedInsightsScreen} />
+      <Stack.Screen name="Placeholder" component={PlaceholderScreen} />
     </Stack.Navigator>
   );
 }
