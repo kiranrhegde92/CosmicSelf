@@ -28,7 +28,7 @@ import {
 let client: Anthropic | null = null;
 
 function getClient() {
-  if (!features.liveChat) return null;
+  if (!features.liveChatDirect) return null;
   if (!client) {
     client = new Anthropic({
       apiKey: env.anthropic.apiKey,
@@ -124,7 +124,7 @@ async function mockSend(astrologerId?: string): Promise<string> {
 }
 
 export const aiChatService = {
-  isLive: features.liveChat,
+  isLive: features.liveChatDirect,
 
   async send(
     message: string,
@@ -134,7 +134,7 @@ export const aiChatService = {
       history?: ChatMessage[];
     } = {},
   ): Promise<string> {
-    if (features.liveChat) {
+    if (features.liveChatDirect) {
       try {
         return await liveSend(message, options.history ?? [], options.astrologerId, options.mode);
       } catch (e) {

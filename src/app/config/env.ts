@@ -3,7 +3,10 @@
  *
  * EXPO_PUBLIC_* vars are inlined by Metro at build/dev time. Anything secret
  * (API keys for paid third parties, signing keys, etc.) must NOT live here —
- * proxy those through a backend.
+ * proxy those through Cloud Functions or another backend.
+ *
+ * Firebase config values are public by design (they identify the project, not
+ * grant access to it). Access control belongs in Firestore Security Rules.
  */
 
 const get = (k: string, fallback = ''): string => {
@@ -12,13 +15,18 @@ const get = (k: string, fallback = ''): string => {
 };
 
 export const env = {
-  supabase: {
-    url: get('EXPO_PUBLIC_SUPABASE_URL'),
-    anonKey: get('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
+  firebase: {
+    apiKey: get('EXPO_PUBLIC_FIREBASE_API_KEY'),
+    authDomain: get('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+    projectId: get('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
+    storageBucket: get('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: get('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+    appId: get('EXPO_PUBLIC_FIREBASE_APP_ID'),
+    region: get('EXPO_PUBLIC_FIREBASE_REGION', 'us-central1'),
   },
 
-  // NOTE: putting an Anthropic key directly in the app is fine for prototyping
-  // but should move to a backend proxy before public release.
+  // Optional: still supported as a development override. In production the
+  // app should call Cloud Functions instead of hitting Anthropic directly.
   anthropic: {
     apiKey: get('EXPO_PUBLIC_ANTHROPIC_API_KEY'),
     model: get('EXPO_PUBLIC_ANTHROPIC_MODEL', 'claude-haiku-4-5'),
@@ -36,7 +44,8 @@ export const env = {
 } as const;
 
 export const features = {
-  supabaseAuth: !!(env.supabase.url && env.supabase.anonKey),
-  liveChat: !!env.anthropic.apiKey,
+  firebase: !!(env.firebase.apiKey && env.firebase.projectId && env.firebase.appId),
+  liveChatViaFunctions: !!(env.firebase.apiKey && env.firebase.projectId && env.firebase.appId),
+  liveChatDirect: !!env.anthropic.apiKey, // dev-only fallback
   revenueCat: !!(env.revenuecat.iosKey || env.revenuecat.androidKey),
 } as const;

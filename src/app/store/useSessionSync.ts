@@ -1,18 +1,19 @@
 import { useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 
 import { features } from '../config/env';
 import { authService } from '../services/authService';
-import { getSupabase } from '../services/supabaseClient';
+import { getFirebaseAuth } from '../services/firebaseClient';
 import { useAuthStore } from './authStore';
 
 /**
- * Mirrors Supabase auth state into the local Zustand auth store. Runs once
- * after stores are hydrated. Falls back silently when Supabase isn't
+ * Mirrors Firebase auth state into the local Zustand auth store. Runs once
+ * after stores are hydrated. Falls back silently when Firebase isn't
  * configured (mock auth flows still work).
  */
 export function useSessionSync(enabled: boolean) {
   useEffect(() => {
-    if (!enabled || !features.supabaseAuth) return;
+    if (!enabled || !features.firebase) return;
     let cancelled = false;
 
     (async () => {
@@ -30,27 +31,28 @@ export function useSessionSync(enabled: boolean) {
       }
     })();
 
-    const sb = getSupabase();
-    const sub = sb?.auth.onAuthStateChange((event, session) => {
-      const { login, logout } = useAuthStore.getState();
-      if (event === 'SIGNED_OUT' || !session) {
-        logout();
-        return;
-      }
-      const u = session.user;
-      login({
-        id: u.id,
-        email: u.email ?? '',
-        name:
-          (u.user_metadata as { name?: string } | null)?.name?.trim() ||
-          u.email?.split('@')[0] ||
-          'Seeker',
-      });
-    });
+    const auth = getFirebaseAuth();
+    const unsub = auth
+      ? onAuthStateChanged(auth, (user) => {
+          const { login, logout } = useAuthStore.getState();
+          if (!user) {
+            logout();
+            return;
+          }
+          login({
+            id: user.uid,
+            email: user.email ?? '',
+            name:
+              user.displayName?.trim() ||
+              user.email?.split('@')[0] ||
+              'Seeker',
+          });
+        })
+      : null;
 
     return () => {
       cancelled = true;
-      sub?.data.subscription.unsubscribe();
+      if (unsub) unsub();
     };
   }, [enabled]);
 }
