@@ -63,7 +63,7 @@ export default function ProfileScreen() {
           <GlassCard style={styles.summary}>
             <Text style={styles.summaryTitle}>Birth Details</Text>
             <Row icon="calendar" label="Date" value={birthDate || '—'} />
-            <Row icon="map-pin" label="Location" value={birthLocation || '—'} />
+            <Row icon="map-pin" label="Location" value={birthLocation?.label || '—'} />
             <Row icon="sparkle" label="Astrologer" value={astrologer.name} />
           </GlassCard>
 

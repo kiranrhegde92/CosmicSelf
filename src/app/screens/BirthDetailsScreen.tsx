@@ -41,7 +41,7 @@ export default function BirthDetailsScreen() {
   const setBirthLocation = useOnboardingStore((s) => s.setBirthLocation);
 
   const [step, setStep] = useState(0);
-  const [date, setDate] = useState('20 May 1995');
+  const [date, setDate] = useState('1995-05-20');
   const [time, setTime] = useState({ hour: 8, minute: 30, ampm: 'AM' as 'AM' | 'PM' });
   const [location, setLocation] = useState('');
 
@@ -62,7 +62,10 @@ export default function BirthDetailsScreen() {
       setStep(2);
     } else {
       if (!location.trim()) return;
-      setBirthLocation(location);
+      // Real lat/lon comes from the Location autocomplete (added in next block);
+      // for now we save the typed label with neutral defaults so the chart
+      // engine returns reasonable (if not pinpoint) placements.
+      setBirthLocation({ label: location, lat: 0, lon: 0, tzOffsetMinutes: 0 });
       navigation.replace('AstrologerSelection');
     }
   };
@@ -112,7 +115,7 @@ export default function BirthDetailsScreen() {
                 <Animated.View entering={SlideInRight.springify()} exiting={SlideOutLeft}>
                   <CosmicInput
                     label="Birth Date"
-                    placeholder="DD MMM YYYY"
+                    placeholder="YYYY-MM-DD"
                     icon="calendar"
                     value={date}
                     onChangeText={setDate}

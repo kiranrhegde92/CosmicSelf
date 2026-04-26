@@ -4,17 +4,26 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type Mode = 'serious' | 'fun';
 
+export type BirthLocation = {
+  label: string;
+  lat: number;
+  lon: number;
+  timezone?: string;
+  tzOffsetMinutes?: number;
+};
+
 type OnboardingState = {
+  /** ISO date YYYY-MM-DD */
   birthDate: string | null;
   birthTime: { hour: number; minute: number; ampm: 'AM' | 'PM' } | null;
-  birthLocation: string | null;
+  birthLocation: BirthLocation | null;
   selectedAstrologerId: string | null;
   mode: Mode;
   hasOnboarded: boolean;
 
   setBirthDate: (d: string) => void;
   setBirthTime: (t: { hour: number; minute: number; ampm: 'AM' | 'PM' }) => void;
-  setBirthLocation: (loc: string) => void;
+  setBirthLocation: (loc: BirthLocation) => void;
   setAstrologer: (id: string) => void;
   setMode: (m: Mode) => void;
   completeOnboarding: () => void;
@@ -54,7 +63,22 @@ export const useOnboardingStore = create<OnboardingState>()(
         mode: state.mode,
         hasOnboarded: state.hasOnboarded,
       }),
-      version: 1,
+      version: 2,
     },
   ),
 );
+
+/** Build an ISO local datetime string + tz offset from persisted onboarding. */
+export function getBirthInputFromStore(state: OnboardingState) {
+  if (!state.birthDate || !state.birthTime || !state.birthLocation) return null;
+  let h = state.birthTime.hour % 12;
+  if (state.birthTime.ampm === 'PM') h += 12;
+  const hh = h.toString().padStart(2, '0');
+  const mm = state.birthTime.minute.toString().padStart(2, '0');
+  return {
+    isoLocal: `${state.birthDate}T${hh}:${mm}:00`,
+    lat: state.birthLocation.lat,
+    lon: state.birthLocation.lon,
+    tzOffsetMinutes: state.birthLocation.tzOffsetMinutes ?? 0,
+  };
+}

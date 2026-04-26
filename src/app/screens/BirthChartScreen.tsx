@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -10,14 +10,15 @@ import GlassCard from '../components/ui/GlassCard';
 import CosmicButton from '../components/ui/CosmicButton';
 import BirthChartPreview from '../components/astrology/BirthChartPreview';
 import CosmicIcon, { IconName } from '../components/ui/CosmicIcon';
-import { birthChart } from '../data/mockInsights';
+import { astrologyService, ChartCardData } from '../services/astrologyService';
+import { birthChart as mockBirthChart } from '../data/mockInsights';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { MainStackParamList } from '../navigation/routes';
 
 const items: {
-  key: keyof typeof birthChart;
+  key: keyof ChartCardData;
   icon: IconName;
   title: string;
 }[] = [
@@ -29,14 +30,22 @@ const items: {
 
 export default function BirthChartScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const [chart, setChart] = useState<ChartCardData>(mockBirthChart);
+
+  useEffect(() => {
+    let active = true;
+    astrologyService.getBirthChart().then((c) => {
+      if (active) setChart(c);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <CosmicBackground intensity="low" showZodiacWheel>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScreenHeader
-          title="My Cosmic Chart"
-          subtitle="Your planetary blueprint"
-        />
+        <ScreenHeader title="My Cosmic Chart" subtitle="Your planetary blueprint" />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
@@ -47,7 +56,7 @@ export default function BirthChartScreen() {
 
           <View style={styles.grid}>
             {items.map((it) => {
-              const data = birthChart[it.key];
+              const data = chart[it.key];
               return (
                 <View key={it.key} style={styles.cell}>
                   <GlassCard padding={spacing.md} style={{ flex: 1 }}>

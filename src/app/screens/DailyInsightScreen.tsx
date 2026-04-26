@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,16 +13,28 @@ import ZodiacWheel from '../components/cosmic/ZodiacWheel';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { dailyInsight } from '../data/mockInsights';
+import { dailyInsight as mockDailyInsight } from '../data/mockInsights';
+import { astrologyService } from '../services/astrologyService';
 import { MainStackParamList } from '../navigation/routes';
 
 export default function DailyInsightScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const [insight, setInsight] = useState(mockDailyInsight);
+
+  useEffect(() => {
+    let active = true;
+    astrologyService.getDailyInsight().then((d) => {
+      if (active) setInsight(d);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <CosmicBackground intensity="medium">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScreenHeader title="Today's Cosmic Insight" subtitle={dailyInsight.date} />
+        <ScreenHeader title="Today's Cosmic Insight" subtitle={insight.date} />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
@@ -30,18 +42,18 @@ export default function DailyInsightScreen() {
           <View style={styles.zodiacWrap}>
             <ZodiacWheel size={200} rotateSpeed={70000} />
             <View style={styles.zodiacGlyph}>
-              <Text style={styles.glyph}>{dailyInsight.zodiacGlyph}</Text>
-              <Text style={styles.zodiacName}>{dailyInsight.zodiac}</Text>
+              <Text style={styles.glyph}>{insight.zodiacGlyph}</Text>
+              <Text style={styles.zodiacName}>{insight.zodiac}</Text>
             </View>
           </View>
 
           <GlassCard style={styles.mainCard}>
-            <Text style={styles.headline}>{dailyInsight.headline}</Text>
-            <Text style={styles.body}>{dailyInsight.body}</Text>
+            <Text style={styles.headline}>{insight.headline}</Text>
+            <Text style={styles.body}>{insight.body}</Text>
           </GlassCard>
 
           <View style={styles.grid}>
-            {dailyInsight.sections.map((s) => (
+            {insight.sections.map((s) => (
               <View key={s.key} style={styles.cell}>
                 <DailyInsightCard
                   icon={s.icon}

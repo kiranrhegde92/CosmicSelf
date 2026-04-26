@@ -4,6 +4,7 @@ import SplashView from '../components/cosmic/SplashView';
 import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { useHydration } from '../store/useHydration';
+import { useSessionSync } from '../store/useSessionSync';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 
@@ -11,6 +12,7 @@ export default function RootNavigator() {
   const hydrated = useHydration();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasOnboarded = useOnboardingStore((s) => s.hasOnboarded);
+  useSessionSync(hydrated);
 
   if (!hydrated) {
     return <SplashView animate={false} />;
