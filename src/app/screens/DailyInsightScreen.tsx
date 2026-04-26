@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,11 +15,14 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { dailyInsight as mockDailyInsight } from '../data/mockInsights';
 import { astrologyService } from '../services/astrologyService';
+import { savedInsightsRepository } from '../services/savedInsightsRepository';
 import { MainStackParamList } from '../navigation/routes';
 
 export default function DailyInsightScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [insight, setInsight] = useState(mockDailyInsight);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -30,6 +33,29 @@ export default function DailyInsightScreen() {
       active = false;
     };
   }, []);
+
+  const onSave = async () => {
+    if (saved || saving) return;
+    setSaving(true);
+    const id = await savedInsightsRepository.save({
+      date: insight.date,
+      zodiac: insight.zodiac,
+      zodiacGlyph: insight.zodiacGlyph,
+      headline: insight.headline,
+      body: insight.body,
+    });
+    setSaving(false);
+    if (id) {
+      setSaved(true);
+    } else if (!savedInsightsRepository.isLive) {
+      Alert.alert(
+        'Sign in to save',
+        'Saved insights live in your account. Configure Firebase or sign in to keep this reading.',
+      );
+    } else {
+      Alert.alert('Couldn’t save', 'Something went wrong saving this insight. Try again shortly.');
+    }
+  };
 
   return (
     <CosmicBackground intensity="medium">
@@ -71,6 +97,15 @@ export default function DailyInsightScreen() {
             icon="chat"
             onPress={() => navigation.navigate('Chat' as any)}
             style={{ marginTop: spacing.lg }}
+          />
+          <CosmicButton
+            title={saved ? 'Saved to your collection' : 'Save Insight'}
+            icon={saved ? 'check' : 'star'}
+            variant="glass"
+            loading={saving}
+            disabled={saved}
+            onPress={onSave}
+            style={{ marginTop: spacing.sm }}
           />
         </ScrollView>
       </SafeAreaView>
