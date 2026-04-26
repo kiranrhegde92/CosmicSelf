@@ -142,7 +142,13 @@ function PartnerSlot({
   onPress?: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={styles.partner} disabled={!onPress}>
+    <Pressable
+      onPress={onPress}
+      style={styles.partner}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${label} — ${sign}`}
+    >
       <View style={styles.wheelMini}>
         <ZodiacWheel size={120} rotateSpeed={90000} showSigns={false} intensity="low" />
         <Text style={[styles.miniGlyph, tint ? { color: tint } : null]}>{glyph}</Text>

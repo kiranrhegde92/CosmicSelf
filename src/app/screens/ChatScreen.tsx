@@ -342,6 +342,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={() => navigation.goBack()}
             style={styles.iconChip}
+            accessibilityRole="button"
             accessibilityLabel="Back"
           >
             <CosmicIcon name="arrow-left" color={colors.white} size={18} />
@@ -349,6 +350,7 @@ export default function ChatScreen() {
           <Pressable
             style={styles.headerCenter}
             onPress={() => navigation.navigate('EditAstrologer')}
+            accessibilityRole="button"
             accessibilityLabel={`Switch astrologer (currently ${astrologer.name})`}
           >
             <View style={styles.headerAvatar}>
@@ -368,6 +370,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={onClearThread}
             style={styles.iconChip}
+            accessibilityRole="button"
             accessibilityLabel="Clear conversation"
           >
             <CosmicIcon name="orbit" color={colors.textSecondary} size={18} />
@@ -375,6 +378,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={() => navigation.navigate('VideoCall')}
             style={styles.iconChip}
+            accessibilityRole="button"
             accessibilityLabel="Start video call"
           >
             <CosmicIcon name="video" color={colors.goldPrimary} size={18} />
@@ -421,9 +425,14 @@ export default function ChatScreen() {
                 styles.iconBtn,
                 voiceState === 'recording' && styles.iconBtnRecording,
               ]}
+              accessibilityRole="button"
               accessibilityLabel={
                 voiceState === 'recording' ? 'Stop recording' : 'Voice input'
               }
+              accessibilityState={{
+                busy: voiceState === 'transcribing',
+                disabled: voiceState === 'transcribing',
+              }}
               onPress={onMicPress}
               disabled={voiceState === 'transcribing'}
             >
@@ -439,7 +448,7 @@ export default function ChatScreen() {
                 size={20}
               />
             </Pressable>
-            <Pressable style={styles.sendBtn} onPress={onSend} accessibilityLabel="Send">
+            <Pressable style={styles.sendBtn} onPress={onSend} accessibilityRole="button" accessibilityLabel="Send">
               <LinearGradient
                 colors={['#FFD98A', '#F6C85F']}
                 start={{ x: 0, y: 0 }}
@@ -504,7 +513,9 @@ function Bubble({
           // would be heavy-handed.
           <Pressable
             onPress={onTtsPress}
+            accessibilityRole="button"
             accessibilityLabel={speaking ? 'Stop reading aloud' : 'Read aloud'}
+            accessibilityState={{ selected: speaking }}
             hitSlop={8}
             style={styles.ttsBtn}
           >

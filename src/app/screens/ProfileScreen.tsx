@@ -104,6 +104,7 @@ export default function ProfileScreen() {
                     }
                     navigation.navigate(m.route as any);
                   }}
+                  accessibilityRole="button"
                   accessibilityLabel={label}
                 >
                   <View style={styles.menuIcon}>
@@ -122,6 +123,7 @@ export default function ProfileScreen() {
               logout();
               reset();
             }}
+            accessibilityRole="button"
             accessibilityLabel={t('profile.logout')}
           >
             <Text style={styles.logoutText}>{t('profile.logout')}</Text>

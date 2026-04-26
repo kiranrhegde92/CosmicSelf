@@ -68,6 +68,7 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => navigation.navigate('Settings')}
             style={styles.iconChip}
+            accessibilityRole="button"
             accessibilityLabel={t('home.openMenu')}
           >
             <CosmicIcon name="menu" color={colors.white} size={18} />
@@ -84,6 +85,7 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => navigation.navigate('Subscription')}
             style={styles.iconChip}
+            accessibilityRole="button"
             accessibilityLabel={
               premium.isPremium ? t('home.premiumBadge.have') : t('home.premiumBadge.upgrade')
             }
@@ -224,7 +226,9 @@ function FloatingAction({
     <Animated.View style={[styles.actionCell, animated]}>
       <Pressable
         onPress={onPress}
+        accessibilityRole="button"
         accessibilityLabel={locked ? `${label} — ${t('home.premiumLockedSuffix')}` : label}
+        accessibilityState={{ disabled: !!locked }}
       >
         <View style={[styles.actionWrap, { borderColor: `${tint}66`, shadowColor: tint }]}>
           <LinearGradient
@@ -292,6 +296,7 @@ function AskBar({ onSubmit }: { onSubmit: (text: string) => void }) {
         />
         <Pressable
           onPress={submit}
+          accessibilityRole="button"
           accessibilityLabel={t('home.sendToChat')}
           style={styles.askButton}
         >

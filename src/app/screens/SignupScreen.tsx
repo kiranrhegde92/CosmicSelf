@@ -124,7 +124,13 @@ export default function SignupScreen() {
                 error={errors.confirm}
               />
 
-              <Pressable style={styles.agreeRow} onPress={() => setAgree(!agree)}>
+              <Pressable
+                style={styles.agreeRow}
+                onPress={() => setAgree(!agree)}
+                accessibilityRole="checkbox"
+                accessibilityLabel="Agree to Terms of Service and Privacy Policy"
+                accessibilityState={{ checked: agree }}
+              >
                 <View style={[styles.box, agree && styles.boxOn]}>
                   {agree && <CosmicIcon name="check" color={colors.bgPrimary} size={12} strokeWidth={3} />}
                 </View>

@@ -271,37 +271,45 @@ export default function SettingsScreen() {
             <View key={section.key} style={{ marginBottom: spacing.lg }}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
               <GlassCard padding={0} style={styles.card}>
-                {section.items.map((item, idx) => (
-                  <Pressable
-                    key={item.key}
-                    style={[
-                      styles.row,
-                      idx === section.items.length - 1 && { borderBottomWidth: 0 },
-                    ]}
-                    onPress={() => {
-                      if (item.type === 'switch') return onToggle(item.key);
-                      onRowPress(item.key, item.route);
-                    }}
-                    accessibilityLabel={item.label}
-                  >
-                    <View style={styles.iconBox}>
-                      <CosmicIcon name={item.icon} color={colors.goldPrimary} size={15} />
-                    </View>
-                    <Text style={styles.label}>{item.label}</Text>
-                    {item.type === 'switch' ? (
-                      <Switch
-                        value={switchValue(item.key)}
-                        onValueChange={() => onToggle(item.key)}
-                        thumbColor={switchValue(item.key) ? colors.goldBright : '#fff'}
-                        trackColor={{ false: '#3A1B6D', true: colors.goldMuted }}
-                      />
-                    ) : item.type === 'value' ? (
-                      <Text style={styles.value}>{item.value}</Text>
-                    ) : (
-                      <CosmicIcon name="chevron-right" color={colors.textMuted} size={16} />
-                    )}
-                  </Pressable>
-                ))}
+                {section.items.map((item, idx) => {
+                  const isSwitch = item.type === 'switch';
+                  const switchOn = isSwitch ? switchValue(item.key) : undefined;
+                  return (
+                    <Pressable
+                      key={item.key}
+                      style={[
+                        styles.row,
+                        idx === section.items.length - 1 && { borderBottomWidth: 0 },
+                      ]}
+                      onPress={() => {
+                        if (isSwitch) return onToggle(item.key);
+                        onRowPress(item.key, item.route);
+                      }}
+                      accessibilityRole={isSwitch ? 'switch' : 'button'}
+                      accessibilityLabel={item.label}
+                      accessibilityState={isSwitch ? { checked: !!switchOn } : undefined}
+                      accessibilityValue={item.type === 'value' ? { text: item.value ?? '' } : undefined}
+                    >
+                      <View style={styles.iconBox}>
+                        <CosmicIcon name={item.icon} color={colors.goldPrimary} size={15} />
+                      </View>
+                      <Text style={styles.label}>{item.label}</Text>
+                      {isSwitch ? (
+                        <Switch
+                          value={switchOn}
+                          onValueChange={() => onToggle(item.key)}
+                          thumbColor={switchOn ? colors.goldBright : '#fff'}
+                          trackColor={{ false: '#3A1B6D', true: colors.goldMuted }}
+                          accessibilityLabel={item.label}
+                        />
+                      ) : item.type === 'value' ? (
+                        <Text style={styles.value}>{item.value}</Text>
+                      ) : (
+                        <CosmicIcon name="chevron-right" color={colors.textMuted} size={16} />
+                      )}
+                    </Pressable>
+                  );
+                })}
               </GlassCard>
             </View>
           ))}

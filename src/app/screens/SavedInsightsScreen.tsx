@@ -98,6 +98,7 @@ export default function SavedInsightsScreen() {
                 onPress={() =>
                   navigation.navigate('SavedInsightDetail', { id: item.id })
                 }
+                accessibilityRole="button"
                 accessibilityLabel={t('savedInsights.openInsight', { date: item.date })}
               >
                 <GlassCard style={styles.card}>
@@ -111,6 +112,7 @@ export default function SavedInsightsScreen() {
                     </View>
                     <Pressable
                       onPress={() => onDelete(item.id)}
+                      accessibilityRole="button"
                       accessibilityLabel={t('savedInsights.delete')}
                       hitSlop={10}
                     >

@@ -124,7 +124,9 @@ function PartnerRow({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
+      accessibilityRole="radio"
       accessibilityLabel={t('partners.selectPartner', { name: partner.name })}
+      accessibilityState={{ selected: active }}
     >
       <GlassCard style={styles.card}>
         <View style={styles.row}>

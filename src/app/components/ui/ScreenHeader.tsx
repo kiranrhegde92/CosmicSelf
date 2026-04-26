@@ -35,6 +35,7 @@ export default function ScreenHeader({
         <View style={styles.side}>
           {showBack && (
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Go back"
               onPress={onBack}
               hitSlop={10}
@@ -66,6 +67,7 @@ export default function ScreenHeader({
         <View style={[styles.side, { alignItems: 'flex-end' }]}>
           {rightIcon && (
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel={rightLabel || 'action'}
               onPress={onRightPress}
               hitSlop={10}
