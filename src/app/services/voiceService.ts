@@ -1,4 +1,14 @@
-import { Audio } from 'expo-av';
+// SDK 55 follow-up: expo-av's native module ExponentAV is no longer
+// shipped in Expo Go (and is deprecated overall). Migrated to expo-audio
+// which exposes a richer recording API. The service surface (start,
+// stopAndTranscribe, cancel, isRecording) is unchanged so callers don't
+// need to know the swap happened.
+import {
+  AudioModule,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 // SDK 55 split expo-file-system into a "next" API + a /legacy subpath that
 // keeps EncodingType / readAsStringAsync / deleteAsync. We use the legacy
 // API here because the new one is async-iterator-shaped and would need a
@@ -9,7 +19,16 @@ import { Platform } from 'react-native';
 import { env, features } from '../config/env';
 import { getFirebaseAuth } from './firebaseClient';
 
-let recording: Audio.Recording | null = null;
+// expo-audio's AudioRecorder. Constructor is type-hidden but accessible
+// via AudioModule (this is what useAudioRecorder uses internally).
+type Recorder = {
+  prepareToRecordAsync(): Promise<void>;
+  record(options?: unknown): void;
+  stop(): Promise<void>;
+  readonly uri: string | null;
+};
+
+let recording: Recorder | null = null;
 
 const MOCK_PHRASES = [
   'Tell me about my Venus today.',
@@ -25,11 +44,14 @@ function transcribeUrl(): string {
 }
 
 async function ensurePermission(): Promise<boolean> {
-  const { status } = await Audio.requestPermissionsAsync();
+  const { status } = await requestRecordingPermissionsAsync();
   if (status !== 'granted') return false;
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
+  await setAudioModeAsync({
+    // expo-audio mode shape: allowsRecording controls whether the session
+    // can capture from the mic; playsInSilentMode keeps playback audible
+    // even with the silent switch on (iOS).
+    allowsRecording: true,
+    playsInSilentMode: true,
   });
   return true;
 }
@@ -48,9 +70,12 @@ export const voiceService = {
     if (recording) throw new Error('Already recording');
     const granted = await ensurePermission();
     if (!granted) throw new Error('Microphone permission denied');
-    const r = new Audio.Recording();
-    await r.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-    await r.startAsync();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r: Recorder = new (AudioModule as any).AudioRecorder(
+      RecordingPresets.HIGH_QUALITY,
+    );
+    await r.prepareToRecordAsync();
+    r.record();
     recording = r;
   },
 
@@ -63,13 +88,11 @@ export const voiceService = {
     if (!recording) throw new Error('Not recording');
     const r = recording;
     recording = null;
-    await r.stopAndUnloadAsync();
-    const uri = r.getURI();
+    await r.stop();
+    const uri = r.uri;
     if (!uri) throw new Error('No audio captured');
 
     if (!features.firebase) {
-      // Drop the local recording, return a mock phrase so the UI shows
-      // something believable.
       try {
         await FileSystem.deleteAsync(uri, { idempotent: true });
       } catch {
@@ -126,8 +149,8 @@ export const voiceService = {
     const r = recording;
     recording = null;
     try {
-      await r.stopAndUnloadAsync();
-      const uri = r.getURI();
+      await r.stop();
+      const uri = r.uri;
       if (uri) await FileSystem.deleteAsync(uri, { idempotent: true });
     } catch {
       /* best effort */
