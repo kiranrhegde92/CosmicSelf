@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -21,6 +22,7 @@ import { AuthStackParamList } from '../navigation/routes';
 
 export default function AstrologerSelectionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const { t } = useTranslation();
   const setAstrologer = useOnboardingStore((s) => s.setAstrologer);
   const setMode = useOnboardingStore((s) => s.setMode);
   const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
@@ -41,8 +43,8 @@ export default function AstrologerSelectionScreen() {
     <CosmicBackground intensity="medium" showZodiacWheel>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Choose Your Astrologer"
-          subtitle="Who will guide you today?"
+          title={t('astrologerSelect.title')}
+          subtitle={t('astrologerSelect.subtitle')}
           showBack
           onBack={() => navigation.goBack()}
           rightIcon="info"
@@ -55,8 +57,8 @@ export default function AstrologerSelectionScreen() {
           <View style={styles.toggleWrap}>
             <ToggleMode
               options={[
-                { key: 'serious', label: 'Serious Mode', icon: 'shield' },
-                { key: 'fun', label: 'Fun Mode', icon: 'sparkle' },
+                { key: 'serious', label: t('astrologerSelect.modeSerious'), icon: 'shield' },
+                { key: 'fun', label: t('astrologerSelect.modeFun'), icon: 'sparkle' },
               ]}
               value={mode}
               onChange={(k) => setMode(k as 'serious' | 'fun')}
@@ -74,17 +76,17 @@ export default function AstrologerSelectionScreen() {
           <GlassCard style={styles.infoCard}>
             <View style={styles.infoHead}>
               <CosmicIcon name="sparkle" color={colors.goldPrimary} size={16} />
-              <Text style={styles.infoTitle}>Why choose an Astrologer?</Text>
+              <Text style={styles.infoTitle}>{t('astrologerSelect.infoTitle')}</Text>
             </View>
             <Text style={styles.infoBody}>
-              Each astrologer has a unique gift and approach. Pick the one who resonates with your
-              energy. {mode === 'fun' ? 'Fun mode keeps replies playful and light.' : 'Serious mode keeps guidance grounded and traditional.'}
+              {t('astrologerSelect.infoLead')}{' '}
+              {mode === 'fun' ? t('astrologerSelect.infoFun') : t('astrologerSelect.infoSerious')}
             </Text>
             <Text style={styles.selectedLabel}>{selected.name} · {selected.specialty}</Text>
           </GlassCard>
 
           <View style={{ paddingHorizontal: spacing.screenH, marginTop: spacing.lg }}>
-            <CosmicButton title="Continue" onPress={onContinue} iconRight="arrow-right" />
+            <CosmicButton title={t('astrologerSelect.continue')} onPress={onContinue} iconRight="arrow-right" />
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -17,6 +18,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function PushPermissionPrePromptScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const [enabling, setEnabling] = useState(false);
 
   const onEnable = async () => {
@@ -34,7 +36,7 @@ export default function PushPermissionPrePromptScreen() {
     <CosmicBackground intensity="medium">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="How notifications work"
+          title={t('pushPrePrompt.title')}
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -49,24 +51,20 @@ export default function PushPermissionPrePromptScreen() {
           </View>
 
           <GlassCard style={styles.card}>
-            <Text style={styles.headline}>A gentle nudge from the cosmos</Text>
-            <Text style={styles.body}>
-              Mornings start better with the cosmos in your pocket.
-            </Text>
-            <Text style={[styles.body, { marginTop: spacing.sm }]}>
-              We send one tap per day, with the strongest transit aspecting your chart. No marketing, ever.
-            </Text>
+            <Text style={styles.headline}>{t('pushPrePrompt.headline')}</Text>
+            <Text style={styles.body}>{t('pushPrePrompt.lead')}</Text>
+            <Text style={[styles.body, { marginTop: spacing.sm }]}>{t('pushPrePrompt.body')}</Text>
           </GlassCard>
 
           <CosmicButton
-            title="Enable Notifications"
+            title={t('pushPrePrompt.enable')}
             icon="bell"
             onPress={onEnable}
             loading={enabling}
             style={{ marginTop: spacing.lg }}
           />
           <CosmicButton
-            title="Maybe later"
+            title={t('pushPrePrompt.later')}
             variant="glass"
             onPress={() => navigation.goBack()}
             style={{ marginTop: spacing.sm }}

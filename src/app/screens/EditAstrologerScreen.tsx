@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -16,6 +17,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function EditAstrologerScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const setAstrologer = useOnboardingStore((s) => s.setAstrologer);
   const setMode = useOnboardingStore((s) => s.setMode);
   const mode = useOnboardingStore((s) => s.mode);
@@ -32,8 +34,8 @@ export default function EditAstrologerScreen() {
     <CosmicBackground intensity="medium" showZodiacWheel>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="My Astrologer"
-          subtitle="Switch your guide"
+          title={t('editAstrologer.title')}
+          subtitle={t('editAstrologer.subtitle')}
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -44,8 +46,8 @@ export default function EditAstrologerScreen() {
           <View style={styles.toggleWrap}>
             <ToggleMode
               options={[
-                { key: 'serious', label: 'Serious Mode', icon: 'shield' },
-                { key: 'fun', label: 'Fun Mode', icon: 'sparkle' },
+                { key: 'serious', label: t('editAstrologer.modeSerious'), icon: 'shield' },
+                { key: 'fun', label: t('editAstrologer.modeFun'), icon: 'sparkle' },
               ]}
               value={mode}
               onChange={(k) => setMode(k as 'serious' | 'fun')}
@@ -61,7 +63,7 @@ export default function EditAstrologerScreen() {
           </View>
 
           <View style={{ paddingHorizontal: spacing.screenH, marginTop: spacing.lg }}>
-            <CosmicButton title="Save" onPress={onSave} iconRight="check" />
+            <CosmicButton title={t('editAstrologer.save')} onPress={onSave} iconRight="check" />
           </View>
         </ScrollView>
       </SafeAreaView>

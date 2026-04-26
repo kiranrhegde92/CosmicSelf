@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -34,6 +35,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function EditPartnerScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<MainStackParamList, 'EditPartner'>>();
   const editingId = route.params?.id;
 
@@ -103,16 +105,16 @@ export default function EditPartnerScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScreenHeader
-            title={existing ? 'Edit Partner' : 'Add a Partner'}
-            subtitle="Their birth details unlock the synastry"
+            title={existing ? t('editPartner.titleEdit') : t('editPartner.titleAdd')}
+            subtitle={t('editPartner.subtitle')}
             showBack
             onBack={() => navigation.goBack()}
           />
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <GlassCard>
               <CosmicInput
-                label="Their Name"
-                placeholder="e.g. Alex"
+                label={t('editPartner.name')}
+                placeholder={t('editPartner.namePlaceholder')}
                 icon="user"
                 value={name}
                 onChangeText={setName}
@@ -121,31 +123,31 @@ export default function EditPartnerScreen() {
             </GlassCard>
 
             <GlassCard style={{ marginTop: spacing.md }}>
-              <Text style={styles.section}>Date of Birth</Text>
+              <Text style={styles.section}>{t('editPartner.dob')}</Text>
               <DateField label="" value={date} onChange={setDate} />
             </GlassCard>
 
             <GlassCard style={{ marginTop: spacing.md }}>
-              <Text style={styles.section}>Time of Birth</Text>
+              <Text style={styles.section}>{t('editPartner.tob')}</Text>
               <View style={styles.dialWrap}>
                 <TimeDialPicker
                   hour={time.hour}
                   minute={time.minute}
                   ampm={time.ampm}
-                  onChange={(h, m) => setTime((t) => ({ ...t, hour: h, minute: m }))}
-                  onAmpmChange={(a) => setTime((t) => ({ ...t, ampm: a }))}
+                  onChange={(h, m) => setTime((prev) => ({ ...prev, hour: h, minute: m }))}
+                  onAmpmChange={(a) => setTime((prev) => ({ ...prev, ampm: a }))}
                 />
               </View>
-              <Text style={styles.helper}>If unknown, set 12:00 PM.</Text>
+              <Text style={styles.helper}>{t('editPartner.tobHelper')}</Text>
             </GlassCard>
 
             <GlassCard style={{ marginTop: spacing.md }}>
-              <Text style={styles.section}>Birth Location</Text>
+              <Text style={styles.section}>{t('editPartner.location')}</Text>
               <LocationAutocomplete
                 value={locationText}
-                onChangeText={(t) => {
-                  setLocationText(t);
-                  if (locationData && t !== locationData.label) setLocationData(null);
+                onChangeText={(text) => {
+                  setLocationText(text);
+                  if (locationData && text !== locationData.label) setLocationData(null);
                 }}
                 onSelect={(p) => {
                   const label = [p.name, p.admin1, p.country].filter(Boolean).join(', ');
@@ -162,7 +164,7 @@ export default function EditPartnerScreen() {
             </GlassCard>
 
             <CosmicButton
-              title="Save Partner"
+              title={t('editPartner.save')}
               onPress={onSave}
               disabled={!canSave}
               style={{ marginTop: spacing.lg }}
@@ -170,7 +172,7 @@ export default function EditPartnerScreen() {
 
             {existing && (
               <CosmicButton
-                title="Remove Partner"
+                title={t('editPartner.remove')}
                 variant="outline"
                 onPress={onRemove}
                 style={{ marginTop: spacing.sm }}

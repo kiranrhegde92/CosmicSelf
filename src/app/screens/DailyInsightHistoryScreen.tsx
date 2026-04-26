@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -31,9 +32,9 @@ const MONTH_NAMES = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-function labelFor(d: Date, offset: number): string {
-  if (offset === 0) return 'Today';
-  if (offset === 1) return 'Yesterday';
+function labelFor(d: Date, offset: number, t: (k: string) => string): string {
+  if (offset === 0) return t('dailyHistory.today');
+  if (offset === 1) return t('dailyHistory.yesterday');
   return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
 }
 
@@ -44,6 +45,7 @@ function labelFor(d: Date, offset: number): string {
  */
 export default function DailyInsightHistoryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const birthInput = useOnboardingStore((s) => getBirthInputFromStore(s));
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
@@ -55,17 +57,17 @@ export default function DailyInsightHistoryScreen() {
       const day = new Date(today);
       day.setDate(today.getDate() - n);
       const insight = synthesizeDailyInsight(birthInput, day);
-      out.push({ date: day, insight, label: labelFor(day, n) });
+      out.push({ date: day, insight, label: labelFor(day, n, t) });
     }
     return out;
-  }, [birthInput]);
+  }, [birthInput, t]);
 
   return (
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Insight History"
-          subtitle="Your last 14 days, retraced"
+          title={t('dailyHistory.title')}
+          subtitle={t('dailyHistory.subtitle')}
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -74,12 +76,10 @@ export default function DailyInsightHistoryScreen() {
             <View style={styles.iconCircle}>
               <CosmicIcon name="calendar" color={colors.goldPrimary} size={26} />
             </View>
-            <Text style={styles.emptyTitle}>Add your birth details to see your history</Text>
-            <Text style={styles.emptyBody}>
-              We synthesize each day's reading from your natal chart. Add your details and the past two weeks light up here.
-            </Text>
+            <Text style={styles.emptyTitle}>{t('dailyHistory.emptyTitle')}</Text>
+            <Text style={styles.emptyBody}>{t('dailyHistory.emptyBody')}</Text>
             <CosmicButton
-              title="Add birth details"
+              title={t('dailyHistory.addBirth')}
               variant="outline"
               onPress={() => navigation.navigate('EditBirthDetails')}
               style={{ marginTop: spacing.md }}
@@ -97,7 +97,7 @@ export default function DailyInsightHistoryScreen() {
                 <Pressable
                   key={key}
                   onPress={() => setExpandedKey(expanded ? null : key)}
-                  accessibilityLabel={`${row.label} insight`}
+                  accessibilityLabel={t('dailyHistory.rowLabel', { label: row.label })}
                 >
                   <GlassCard style={styles.card}>
                     <View style={styles.headRow}>

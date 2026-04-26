@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -26,6 +27,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function EditBirthDetailsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
 
   const persistedDate = useOnboardingStore((s) => s.birthDate);
   const persistedTime = useOnboardingStore((s) => s.birthTime);
@@ -54,37 +56,37 @@ export default function EditBirthDetailsScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScreenHeader
-            title="Birth Details"
-            subtitle="Refine your cosmic coordinates"
+            title={t('editBirthDetails.title')}
+            subtitle={t('editBirthDetails.subtitle')}
             showBack
             onBack={() => navigation.goBack()}
           />
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <GlassCard>
-              <Text style={styles.section}>Date</Text>
+              <Text style={styles.section}>{t('editBirthDetails.date')}</Text>
               <DateField label="" value={date} onChange={setDate} />
             </GlassCard>
 
             <GlassCard style={{ marginTop: spacing.md }}>
-              <Text style={styles.section}>Time</Text>
+              <Text style={styles.section}>{t('editBirthDetails.time')}</Text>
               <View style={styles.dialWrap}>
                 <TimeDialPicker
                   hour={time.hour}
                   minute={time.minute}
                   ampm={time.ampm}
-                  onChange={(h, m) => setTime((t) => ({ ...t, hour: h, minute: m }))}
-                  onAmpmChange={(a) => setTime((t) => ({ ...t, ampm: a }))}
+                  onChange={(h, m) => setTime((prev) => ({ ...prev, hour: h, minute: m }))}
+                  onAmpmChange={(a) => setTime((prev) => ({ ...prev, ampm: a }))}
                 />
               </View>
             </GlassCard>
 
             <GlassCard style={{ marginTop: spacing.md }}>
-              <Text style={styles.section}>Location</Text>
+              <Text style={styles.section}>{t('editBirthDetails.location')}</Text>
               <LocationAutocomplete
                 value={locationText}
-                onChangeText={(t) => {
-                  setLocationText(t);
-                  if (locationData && t !== locationData.label) setLocationData(null);
+                onChangeText={(text) => {
+                  setLocationText(text);
+                  if (locationData && text !== locationData.label) setLocationData(null);
                 }}
                 onSelect={(p) => {
                   const label = [p.name, p.admin1, p.country].filter(Boolean).join(', ');
@@ -101,7 +103,7 @@ export default function EditBirthDetailsScreen() {
             </GlassCard>
 
             <CosmicButton
-              title="Save Changes"
+              title={t('editBirthDetails.save')}
               onPress={onSave}
               style={{ marginTop: spacing.lg }}
             />

@@ -191,6 +191,100 @@
       "remove": "Delete from collection"
     }
   },
+  "videoCall": {
+    "feature": "AI Video Call",
+    "connected": "Connected to Cosmos",
+    "muted": "You're muted",
+    "tapMicResume": "Tap the mic to resume",
+    "reading": "Reading your cosmic patterns",
+    "cameraPaused": "Camera paused",
+    "cameraOn": "Camera On",
+    "cameraOff": "Camera Off",
+    "endCall": "End Call",
+    "live": "Live",
+    "askPlaceholder": "Ask anything...",
+    "endTitle": "End the session?",
+    "endBody": "Your astrologer will stop reading your energy. You can come back anytime.",
+    "endCta": "End",
+    "tag": {
+      "zodiac": "Zodiac Wheel",
+      "zodiacValue": "Active",
+      "energy": "Cosmic Energy",
+      "energyValue": "Balanced",
+      "flow": "Planetary Flow",
+      "flowValue": "Favorable",
+      "intuition": "Intuition Level",
+      "intuitionValue": "High"
+    },
+    "state": {
+      "listening": "Listening to your aura",
+      "analyzing": "Analyzing your energy",
+      "forming": "Insight is forming",
+      "speaking": "Speaking the wisdom"
+    },
+    "paywall": {
+      "bullet1": "Live video sessions with your astrologer",
+      "bullet2": "Personalized voice + visual readings",
+      "bullet3": "Unlimited weekly sessions on Cosmic Master"
+    }
+  },
+  "pushPrePrompt": {
+    "title": "How notifications work",
+    "headline": "A gentle nudge from the cosmos",
+    "lead": "Mornings start better with the cosmos in your pocket.",
+    "body": "We send one tap per day, with the strongest transit aspecting your chart. No marketing, ever.",
+    "enable": "Enable Notifications",
+    "later": "Maybe later"
+  },
+  "dailyHistory": {
+    "title": "Insight History",
+    "subtitle": "Your last 14 days, retraced",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "rowLabel": "{{label}} insight",
+    "emptyTitle": "Add your birth details to see your history",
+    "emptyBody": "We synthesize each day's reading from your natal chart. Add your details and the past two weeks light up here.",
+    "addBirth": "Add birth details"
+  },
+  "astrologerSelect": {
+    "title": "Choose Your Astrologer",
+    "subtitle": "Who will guide you today?",
+    "modeSerious": "Serious Mode",
+    "modeFun": "Fun Mode",
+    "infoTitle": "Why choose an Astrologer?",
+    "infoLead": "Each astrologer has a unique gift and approach. Pick the one who resonates with your energy.",
+    "infoFun": "Fun mode keeps replies playful and light.",
+    "infoSerious": "Serious mode keeps guidance grounded and traditional.",
+    "continue": "Continue"
+  },
+  "editBirthDetails": {
+    "title": "Birth Details",
+    "subtitle": "Refine your cosmic coordinates",
+    "date": "Date",
+    "time": "Time",
+    "location": "Location",
+    "save": "Save Changes"
+  },
+  "editAstrologer": {
+    "title": "My Astrologer",
+    "subtitle": "Switch your guide",
+    "modeSerious": "Serious Mode",
+    "modeFun": "Fun Mode",
+    "save": "Save"
+  },
+  "editPartner": {
+    "titleEdit": "Edit Partner",
+    "titleAdd": "Add a Partner",
+    "subtitle": "Their birth details unlock the synastry",
+    "name": "Their Name",
+    "namePlaceholder": "e.g. Alex",
+    "dob": "Date of Birth",
+    "tob": "Time of Birth",
+    "tobHelper": "If unknown, set 12:00 PM.",
+    "location": "Birth Location",
+    "save": "Save Partner",
+    "remove": "Remove Partner"
+  },
   "partners": {
     "title": "Your Partners",
     "subtitle": "Pick whose chart to compare",

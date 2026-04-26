@@ -3,6 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -29,15 +30,16 @@ import { radii, spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
 import { MainStackParamList } from '../navigation/routes';
 
-const STATES = [
-  'Listening to your aura',
-  'Analyzing your energy',
-  'Insight is forming',
-  'Speaking the wisdom',
-];
+const STATE_KEYS = [
+  'videoCall.state.listening',
+  'videoCall.state.analyzing',
+  'videoCall.state.forming',
+  'videoCall.state.speaking',
+] as const;
 
 export default function VideoCallScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
   const premium = usePremium();
@@ -59,10 +61,10 @@ export default function VideoCallScreen() {
   // not talking. Resume from where we left off when un-muted.
   useEffect(() => {
     if (muted) return;
-    const t = setInterval(() => {
-      setStateIdx((i) => (i + 1) % STATES.length);
+    const id = setInterval(() => {
+      setStateIdx((i) => (i + 1) % STATE_KEYS.length);
     }, 3500);
-    return () => clearInterval(t);
+    return () => clearInterval(id);
   }, [muted]);
 
   const onToggleMic = () => {
@@ -77,12 +79,12 @@ export default function VideoCallScreen() {
 
   const onEndCall = () => {
     Alert.alert(
-      'End the session?',
-      "Your astrologer will stop reading your energy. You can come back anytime.",
+      t('videoCall.endTitle'),
+      t('videoCall.endBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'End',
+          text: t('videoCall.endCta'),
           style: 'destructive',
           onPress: () => {
             haptics.thump();
@@ -107,7 +109,7 @@ export default function VideoCallScreen() {
             <Text style={styles.headerName}>{astrologer.name}</Text>
             <View style={styles.statusRow}>
               <View style={styles.dotOnline} />
-              <Text style={styles.connected}>Connected to Cosmos</Text>
+              <Text style={styles.connected}>{t('videoCall.connected')}</Text>
             </View>
           </View>
           <Pressable style={styles.iconChip}>
@@ -117,8 +119,8 @@ export default function VideoCallScreen() {
 
         <View style={styles.heroWrap}>
           <View style={styles.tagsRow}>
-            <SideTag icon="orbit" label="Zodiac Wheel" value="Active" />
-            <SideTag icon="sparkle" label="Cosmic Energy" value="Balanced" align="right" />
+            <SideTag icon="orbit" label={t('videoCall.tag.zodiac')} value={t('videoCall.tag.zodiacValue')} />
+            <SideTag icon="sparkle" label={t('videoCall.tag.energy')} value={t('videoCall.tag.energyValue')} align="right" />
           </View>
 
           <View style={styles.avatarStack}>
@@ -133,15 +135,15 @@ export default function VideoCallScreen() {
               {!video && (
                 <View style={styles.cameraOffOverlay}>
                   <CosmicIcon name="video-off" color={colors.goldBright} size={22} />
-                  <Text style={styles.cameraOffLabel}>Camera paused</Text>
+                  <Text style={styles.cameraOffLabel}>{t('videoCall.cameraPaused')}</Text>
                 </View>
               )}
             </View>
           </View>
 
           <View style={styles.tagsRowBottom}>
-            <SideTag icon="moon" label="Planetary Flow" value="Favorable" />
-            <SideTag icon="sun" label="Intuition Level" value="High" align="right" />
+            <SideTag icon="moon" label={t('videoCall.tag.flow')} value={t('videoCall.tag.flowValue')} />
+            <SideTag icon="sun" label={t('videoCall.tag.intuition')} value={t('videoCall.tag.intuitionValue')} align="right" />
           </View>
         </View>
 
@@ -156,10 +158,10 @@ export default function VideoCallScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <Text style={styles.statusTitle}>
-                {muted ? 'You\'re muted' : `${STATES[stateIdx]}…`}
+                {muted ? t('videoCall.muted') : `${t(STATE_KEYS[stateIdx])}…`}
               </Text>
               <Text style={styles.statusSub}>
-                {muted ? 'Tap the mic to resume' : 'Reading your cosmic patterns'}
+                {muted ? t('videoCall.tapMicResume') : t('videoCall.reading')}
               </Text>
             </View>
             {!muted && <AudioWave />}
@@ -169,7 +171,7 @@ export default function VideoCallScreen() {
         <View style={styles.controls}>
           <CallButton
             icon={video ? 'video' : 'video-off'}
-            label={video ? 'Camera On' : 'Camera Off'}
+            label={video ? t('videoCall.cameraOn') : t('videoCall.cameraOff')}
             onPress={onToggleVideo}
             active={video}
           />
@@ -177,12 +179,12 @@ export default function VideoCallScreen() {
             icon="phone-end"
             danger
             big
-            label="End Call"
+            label={t('videoCall.endCall')}
             onPress={onEndCall}
           />
           <CallButton
             icon={muted ? 'mic-off' : 'mic'}
-            label={muted ? 'Muted' : 'Live'}
+            label={muted ? t('videoCall.muted') : t('videoCall.live')}
             onPress={onToggleMic}
             active={!muted}
           />
@@ -196,7 +198,7 @@ export default function VideoCallScreen() {
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
-            <Text style={styles.askPlaceholder}>Ask anything...</Text>
+            <Text style={styles.askPlaceholder}>{t('videoCall.askPlaceholder')}</Text>
             <View style={styles.askButton}>
               <CosmicIcon name="sparkle" color="#1A0F33" size={16} />
             </View>
@@ -209,11 +211,11 @@ export default function VideoCallScreen() {
             premium.hidePaywall();
             if (!premium.isPremium) navigation.goBack();
           }}
-          feature="AI Video Call"
+          feature={t('videoCall.feature')}
           bullets={[
-            'Live video sessions with your astrologer',
-            'Personalized voice + visual readings',
-            'Unlimited weekly sessions on Cosmic Master',
+            t('videoCall.paywall.bullet1'),
+            t('videoCall.paywall.bullet2'),
+            t('videoCall.paywall.bullet3'),
           ]}
         />
       </SafeAreaView>
