@@ -29,7 +29,7 @@ import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import { ASTROLOGERS } from '../data/astrologers';
 import { sampleMessages } from '../data/mockInsights';
 import { useOnboardingStore } from '../store/onboardingStore';
-import { aiChatService } from '../services/aiChatService';
+import { aiChatService, ChatMessage } from '../services/aiChatService';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -40,6 +40,7 @@ type Message = { id: string; from: 'user' | 'ai'; text: string };
 export default function ChatScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
+  const mode = useOnboardingStore((s) => s.mode);
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
 
   const [messages, setMessages] = useState<Message[]>(sampleMessages);
@@ -59,10 +60,19 @@ export default function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed) return;
     const userMsg: Message = { id: `u-${Date.now()}`, from: 'user', text: trimmed };
-    setMessages((m) => [...m, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setText('');
     setTyping(true);
-    const reply = await aiChatService.send(trimmed, astrologerId);
+    const history: ChatMessage[] = nextMessages.map((m) => ({
+      role: m.from === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+    const reply = await aiChatService.send(trimmed, {
+      astrologerId,
+      mode,
+      history,
+    });
     const aiMsg: Message = { id: `a-${Date.now()}`, from: 'ai', text: reply };
     setMessages((m) => [...m, aiMsg]);
     setTyping(false);

@@ -20,9 +20,10 @@ import Animated, {
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
-import CosmicInput from '../components/ui/CosmicInput';
 import CosmicButton from '../components/ui/CosmicButton';
 import CosmicIcon from '../components/ui/CosmicIcon';
+import DateField from '../components/ui/DateField';
+import LocationAutocomplete from '../components/ui/LocationAutocomplete';
 import StepProgress from '../components/ui/StepProgress';
 import TimeDialPicker from '../components/astrology/TimeDialPicker';
 import { colors } from '../theme/colors';
@@ -39,11 +40,19 @@ export default function BirthDetailsScreen() {
   const setBirthDate = useOnboardingStore((s) => s.setBirthDate);
   const setBirthTime = useOnboardingStore((s) => s.setBirthTime);
   const setBirthLocation = useOnboardingStore((s) => s.setBirthLocation);
+  const persistedLocation = useOnboardingStore((s) => s.birthLocation);
 
   const [step, setStep] = useState(0);
   const [date, setDate] = useState('1995-05-20');
   const [time, setTime] = useState({ hour: 8, minute: 30, ampm: 'AM' as 'AM' | 'PM' });
-  const [location, setLocation] = useState('');
+  const [locationText, setLocationText] = useState(persistedLocation?.label ?? '');
+  const [locationData, setLocationData] = useState<{
+    label: string;
+    lat: number;
+    lon: number;
+    timezone?: string;
+    tzOffsetMinutes?: number;
+  } | null>(persistedLocation);
 
   const completed = useMemo(() => {
     const arr: number[] = [];
@@ -54,18 +63,15 @@ export default function BirthDetailsScreen() {
 
   const onPrimary = () => {
     if (step === 0) {
-      if (!date.trim()) return;
+      if (!date) return;
       setBirthDate(date);
       setStep(1);
     } else if (step === 1) {
       setBirthTime(time);
       setStep(2);
     } else {
-      if (!location.trim()) return;
-      // Real lat/lon comes from the Location autocomplete (added in next block);
-      // for now we save the typed label with neutral defaults so the chart
-      // engine returns reasonable (if not pinpoint) placements.
-      setBirthLocation({ label: location, lat: 0, lon: 0, tzOffsetMinutes: 0 });
+      if (!locationData) return;
+      setBirthLocation(locationData);
       navigation.replace('AstrologerSelection');
     }
   };
@@ -77,6 +83,10 @@ export default function BirthDetailsScreen() {
 
   const cta =
     step === 0 ? 'Next: Time of Birth' : step === 1 ? 'Next: Location' : 'Reveal My Chart';
+
+  const ctaDisabled =
+    (step === 0 && !date) ||
+    (step === 2 && !locationData);
 
   return (
     <CosmicBackground intensity="low">
@@ -107,19 +117,13 @@ export default function BirthDetailsScreen() {
                 ? 'Choose your exact date of birth'
                 : step === 1
                   ? 'Drag the dial or set AM/PM'
-                  : 'City, state or country'}
+                  : 'Search for your city to set the right coordinates'}
             </Text>
 
             <GlassCard style={{ marginTop: spacing.md }}>
               {step === 0 && (
                 <Animated.View entering={SlideInRight.springify()} exiting={SlideOutLeft}>
-                  <CosmicInput
-                    label="Birth Date"
-                    placeholder="YYYY-MM-DD"
-                    icon="calendar"
-                    value={date}
-                    onChangeText={setDate}
-                  />
+                  <DateField label="Birth Date" value={date} onChange={setDate} />
                   <View style={styles.row}>
                     <CosmicIcon name="info" color={colors.textMuted} size={14} />
                     <Text style={styles.helper}>Your data is secure and private</Text>
@@ -142,16 +146,39 @@ export default function BirthDetailsScreen() {
 
               {step === 2 && (
                 <Animated.View entering={SlideInRight.springify()} exiting={SlideOutLeft}>
-                  <CosmicInput
+                  <LocationAutocomplete
                     label="Birth Location"
-                    placeholder="e.g. Mumbai, India"
-                    icon="map-pin"
-                    value={location}
-                    onChangeText={setLocation}
+                    value={locationText}
+                    onChangeText={(t) => {
+                      setLocationText(t);
+                      // Invalidate previously-selected coords if user starts typing again
+                      if (locationData && t !== locationData.label) setLocationData(null);
+                    }}
+                    onSelect={(p) => {
+                      const label = [p.name, p.admin1, p.country]
+                        .filter(Boolean)
+                        .join(', ');
+                      setLocationText(label);
+                      setLocationData({
+                        label,
+                        lat: p.lat,
+                        lon: p.lon,
+                        timezone: p.timezone,
+                        tzOffsetMinutes: p.tzOffsetMinutes ?? 0,
+                      });
+                    }}
                   />
                   <View style={styles.row}>
-                    <CosmicIcon name="info" color={colors.textMuted} size={14} />
-                    <Text style={styles.helper}>We use this only to calculate your chart</Text>
+                    <CosmicIcon
+                      name={locationData ? 'check' : 'info'}
+                      color={locationData ? colors.success : colors.textMuted}
+                      size={14}
+                    />
+                    <Text style={styles.helper}>
+                      {locationData
+                        ? `Coordinates locked: ${locationData.lat.toFixed(2)}, ${locationData.lon.toFixed(2)}`
+                        : 'Pick a city from the dropdown for accurate placements'}
+                    </Text>
                   </View>
                 </Animated.View>
               )}
@@ -161,6 +188,7 @@ export default function BirthDetailsScreen() {
               <CosmicButton
                 title={cta}
                 onPress={onPrimary}
+                disabled={ctaDisabled}
                 iconRight={step === 2 ? 'sparkle' : 'arrow-right'}
               />
               <Text style={styles.bottomNote}>Your data is secure and private</Text>
@@ -201,6 +229,7 @@ const styles = StyleSheet.create({
   helper: {
     ...typography.caption,
     color: colors.textMuted,
+    flexShrink: 1,
   },
   helperCenter: {
     ...typography.caption,
