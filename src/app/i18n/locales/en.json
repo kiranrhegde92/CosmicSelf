@@ -171,6 +171,71 @@
       "saveFailedBody": "Something went wrong saving this insight. Try again shortly."
     }
   },
+  "savedInsights": {
+    "title": "Saved Insights",
+    "subtitle": "Your cosmic memory book",
+    "emptyTitle": "Nothing saved yet",
+    "emptyBody": "Tap \"Save Insight\" on a daily reading and it will appear here.",
+    "openInsight": "Open insight from {{date}}",
+    "delete": "Delete insight",
+    "removeTitle": "Remove insight?",
+    "removeBody": "This will delete the saved insight from your collection.",
+    "deleteCta": "Delete",
+    "detail": {
+      "title": "Saved Insight",
+      "missingTitle": "This insight no longer exists",
+      "missingBody": "It may have been removed from your collection. Head back and pick another.",
+      "back": "Back to collection",
+      "ask": "Ask astrologer about this",
+      "askPrompt": "Tell me more about: {{headline}}",
+      "remove": "Delete from collection"
+    }
+  },
+  "partners": {
+    "title": "Your Partners",
+    "subtitle": "Pick whose chart to compare",
+    "addPartner": "Add Partner",
+    "fallbackName": "Partner",
+    "actionsBody": "Choose an action",
+    "edit": "Edit",
+    "remove": "Remove",
+    "selectPartner": "Select {{name}}",
+    "activePartner": "Active partner",
+    "tapToSetActive": "Tap to set active",
+    "emptyTitle": "Add your first partner",
+    "emptyBody": "Save birth details for the people you want to compare charts with."
+  },
+  "subscription": {
+    "title": "Unlock Deeper Insights",
+    "subtitle": "Choose a plan that aligns with your cosmic journey",
+    "restore": "Restore",
+    "secure": "Secure Payment",
+    "secureSub": "Cancel anytime. No hidden charges.",
+    "trustedBy": "Trusted by",
+    "trustedCount": "500K+",
+    "trustedSub": "Cosmic Seekers",
+    "rating": "App Store Rating",
+    "ratingValue": "4.9/5",
+    "ratingStars": "★★★★★",
+    "perMonth": " /month",
+    "currentPlan": "CURRENT PLAN",
+    "mostPopular": "MOST POPULAR",
+    "active": "Active",
+    "continueFree": "Continue with Free",
+    "continueCta": "Continue",
+    "legal": {
+      "terms": "Terms of Use",
+      "privacy": "Privacy Policy",
+      "restore": "Restore Purchases"
+    },
+    "restoreAlert": {
+      "successTitle": "Restored",
+      "successMaster": "Your Cosmic Master plan is back. Welcome home.",
+      "successPro": "Your Pro Seeker plan is restored. Tap to keep exploring.",
+      "noneTitle": "Nothing to restore",
+      "noneBody": "We couldn't find an active subscription on this account."
+    }
+  },
   "compatibility": {
     "title": "Cosmic Compatibility",
     "subtitle": "See how your energies align",

@@ -7,6 +7,7 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -27,6 +28,7 @@ type DetailRoute = RouteProp<MainStackParamList, 'SavedInsightDetail'>;
 
 export default function SavedInsightDetailScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const route = useRoute<DetailRoute>();
   const { id } = route.params;
 
@@ -50,19 +52,19 @@ export default function SavedInsightDetailScreen() {
     if (!insight) return;
     useAppStore
       .getState()
-      .setPendingChatPrompt('Tell me more about: ' + insight.headline);
+      .setPendingChatPrompt(t('savedInsights.detail.askPrompt', { headline: insight.headline }));
     navigation.navigate('Chat' as any);
   };
 
   const onDelete = () => {
     if (!insight) return;
     Alert.alert(
-      'Remove insight?',
-      'This will delete the saved insight from your collection.',
+      t('savedInsights.removeTitle'),
+      t('savedInsights.removeBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('savedInsights.deleteCta'),
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
@@ -79,7 +81,7 @@ export default function SavedInsightDetailScreen() {
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Saved Insight"
+          title={t('savedInsights.detail.title')}
           subtitle={insight?.zodiac ?? undefined}
           showBack
           onBack={() => navigation.goBack()}
@@ -94,13 +96,11 @@ export default function SavedInsightDetailScreen() {
               <View style={styles.iconCircle}>
                 <CosmicIcon name="info" color={colors.goldPrimary} size={24} />
               </View>
-              <Text style={styles.emptyTitle}>This insight no longer exists</Text>
-              <Text style={styles.emptyBody}>
-                It may have been removed from your collection. Head back and pick another.
-              </Text>
+              <Text style={styles.emptyTitle}>{t('savedInsights.detail.missingTitle')}</Text>
+              <Text style={styles.emptyBody}>{t('savedInsights.detail.missingBody')}</Text>
             </GlassCard>
             <CosmicButton
-              title="Back to collection"
+              title={t('savedInsights.detail.back')}
               variant="glass"
               onPress={() => navigation.goBack()}
               style={{ marginTop: spacing.md }}
@@ -121,13 +121,13 @@ export default function SavedInsightDetailScreen() {
             </GlassCard>
 
             <CosmicButton
-              title="Ask astrologer about this"
+              title={t('savedInsights.detail.ask')}
               icon="chat"
               onPress={onAskAstrologer}
               style={{ marginTop: spacing.lg }}
             />
             <CosmicButton
-              title="Delete from collection"
+              title={t('savedInsights.detail.remove')}
               icon="close"
               variant="danger"
               loading={deleting}

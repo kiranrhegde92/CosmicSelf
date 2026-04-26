@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import GlassCard from '../components/ui/GlassCard';
@@ -27,6 +28,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function SavedInsightsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const [items, setItems] = useState<SavedInsight[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,10 +54,10 @@ export default function SavedInsightsScreen() {
   };
 
   const onDelete = (id: string) => {
-    Alert.alert('Remove insight?', 'This will delete the saved insight from your collection.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('savedInsights.removeTitle'), t('savedInsights.removeBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('savedInsights.deleteCta'),
         style: 'destructive',
         onPress: async () => {
           const ok = await savedInsightsRepository.remove(id);
@@ -69,8 +71,8 @@ export default function SavedInsightsScreen() {
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Saved Insights"
-          subtitle="Your cosmic memory book"
+          title={t('savedInsights.title')}
+          subtitle={t('savedInsights.subtitle')}
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -81,10 +83,8 @@ export default function SavedInsightsScreen() {
         ) : items.length === 0 ? (
           <View style={styles.center}>
             <CosmicIcon name="book" color={colors.goldPrimary} size={32} />
-            <Text style={styles.emptyTitle}>Nothing saved yet</Text>
-            <Text style={styles.emptyBody}>
-              Tap "Save Insight" on a daily reading and it will appear here.
-            </Text>
+            <Text style={styles.emptyTitle}>{t('savedInsights.emptyTitle')}</Text>
+            <Text style={styles.emptyBody}>{t('savedInsights.emptyBody')}</Text>
           </View>
         ) : (
           <FlatList
@@ -98,7 +98,7 @@ export default function SavedInsightsScreen() {
                 onPress={() =>
                   navigation.navigate('SavedInsightDetail', { id: item.id })
                 }
-                accessibilityLabel={`Open insight from ${item.date}`}
+                accessibilityLabel={t('savedInsights.openInsight', { date: item.date })}
               >
                 <GlassCard style={styles.card}>
                   <View style={styles.row}>
@@ -111,7 +111,7 @@ export default function SavedInsightsScreen() {
                     </View>
                     <Pressable
                       onPress={() => onDelete(item.id)}
-                      accessibilityLabel="Delete insight"
+                      accessibilityLabel={t('savedInsights.delete')}
                       hitSlop={10}
                     >
                       <CosmicIcon name="close" color={colors.textMuted} size={16} />

@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -32,6 +33,7 @@ import { MainStackParamList } from '../navigation/routes';
 export default function PartnersListScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const partners = useOnboardingStore((s) => s.partners);
   const activePartnerId = useOnboardingStore((s) => s.activePartnerId);
   const setActivePartnerId = useOnboardingStore((s) => s.setActivePartnerId);
@@ -45,20 +47,20 @@ export default function PartnersListScreen() {
   };
 
   const onLongPress = (p: Partner) => {
-    Alert.alert(p.name || 'Partner', 'Choose an action', [
+    Alert.alert(p.name || t('partners.fallbackName'), t('partners.actionsBody'), [
       {
-        text: 'Edit',
+        text: t('partners.edit'),
         onPress: () => navigation.navigate('EditPartner', { id: p.id }),
       },
       {
-        text: 'Remove',
+        text: t('partners.remove'),
         style: 'destructive',
         onPress: () => {
           removePartner(p.id);
           partnerRepository.remove(p.id);
         },
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -66,12 +68,12 @@ export default function PartnersListScreen() {
     <CosmicBackground intensity="low">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Your Partners"
-          subtitle="Pick whose chart to compare"
+          title={t('partners.title')}
+          subtitle={t('partners.subtitle')}
           showBack
           onBack={() => navigation.goBack()}
           rightIcon="plus"
-          rightLabel="Add Partner"
+          rightLabel={t('partners.addPartner')}
           onRightPress={onAdd}
         />
         {partners.length === 0 ? (
@@ -107,6 +109,7 @@ function PartnerRow({
   onPress: () => void;
   onLongPress: () => void;
 }) {
+  const { t } = useTranslation();
   const glyph = useMemo(() => {
     try {
       const chart = computeNatalChart(partnerToBirthInput(partner));
@@ -121,7 +124,7 @@ function PartnerRow({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
-      accessibilityLabel={`Select ${partner.name}`}
+      accessibilityLabel={t('partners.selectPartner', { name: partner.name })}
     >
       <GlassCard style={styles.card}>
         <View style={styles.row}>
@@ -130,7 +133,7 @@ function PartnerRow({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.name} numberOfLines={1}>
-              {partner.name || 'Partner'}
+              {partner.name || t('partners.fallbackName')}
             </Text>
             <Text style={styles.meta} numberOfLines={1}>
               {partner.birthDate}
@@ -138,7 +141,7 @@ function PartnerRow({
           </View>
           <View
             style={[styles.radio, active && styles.radioActive]}
-            accessibilityLabel={active ? 'Active partner' : 'Tap to set active'}
+            accessibilityLabel={active ? t('partners.activePartner') : t('partners.tapToSetActive')}
           >
             {active && <View style={styles.radioDot} />}
           </View>
@@ -149,17 +152,16 @@ function PartnerRow({
 }
 
 function Empty({ onAdd }: { onAdd: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
         <CosmicIcon name="heart" color={colors.goldPrimary} size={28} />
       </View>
-      <Text style={styles.emptyTitle}>Add your first partner</Text>
-      <Text style={styles.emptyBody}>
-        Save birth details for the people you want to compare charts with.
-      </Text>
+      <Text style={styles.emptyTitle}>{t('partners.emptyTitle')}</Text>
+      <Text style={styles.emptyBody}>{t('partners.emptyBody')}</Text>
       <CosmicButton
-        title="Add Partner"
+        title={t('partners.addPartner')}
         icon="plus"
         onPress={onAdd}
         style={{ marginTop: spacing.lg }}

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
@@ -23,6 +24,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function SubscriptionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const { t } = useTranslation();
   const currentTier = useEntitlementStore((s) => s.tier);
   const [selected, setSelected] = useState<string>(
     currentTier === 'free' ? 'pro' : currentTier,
@@ -48,25 +50,25 @@ export default function SubscriptionScreen() {
     <CosmicBackground intensity="medium" showZodiacWheel>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScreenHeader
-          title="Unlock Deeper Insights"
-          subtitle="Choose a plan that aligns with your cosmic journey"
+          title={t('subscription.title')}
+          subtitle={t('subscription.subtitle')}
           showBack
           onBack={() => navigation.goBack()}
-          rightLabel="Restore"
+          rightLabel={t('subscription.restore')}
           rightIcon="orbit"
           onRightPress={async () => {
             const result = await paymentService.restorePurchases();
             if (result.ok && result.entitlement) {
               Alert.alert(
-                'Restored',
+                t('subscription.restoreAlert.successTitle'),
                 result.tier === 'master'
-                  ? 'Your Cosmic Master plan is back. Welcome home.'
-                  : 'Your Pro Seeker plan is restored. Tap to keep exploring.',
+                  ? t('subscription.restoreAlert.successMaster')
+                  : t('subscription.restoreAlert.successPro'),
               );
             } else {
               Alert.alert(
-                'Nothing to restore',
-                'We couldn\'t find an active subscription on this account.',
+                t('subscription.restoreAlert.noneTitle'),
+                t('subscription.restoreAlert.noneBody'),
               );
             }
           }}
@@ -97,30 +99,40 @@ export default function SubscriptionScreen() {
           <GlassCard style={styles.secureCard}>
             <View style={styles.secureRow}>
               <CosmicIcon name="shield" color={colors.goldPrimary} size={16} />
-              <Text style={styles.secureText}>Secure Payment</Text>
+              <Text style={styles.secureText}>{t('subscription.secure')}</Text>
               <Text style={styles.secureDot}>·</Text>
-              <Text style={styles.secureSub}>Cancel anytime. No hidden charges.</Text>
+              <Text style={styles.secureSub}>{t('subscription.secureSub')}</Text>
             </View>
           </GlassCard>
 
           <View style={styles.statsRow}>
-            <Stat label="Trusted by" value="500K+" sub="Cosmic Seekers" icon="user" />
-            <Stat label="App Store Rating" value="4.9/5" sub="★★★★★" icon="star-filled" />
+            <Stat
+              label={t('subscription.trustedBy')}
+              value={t('subscription.trustedCount')}
+              sub={t('subscription.trustedSub')}
+              icon="user"
+            />
+            <Stat
+              label={t('subscription.rating')}
+              value={t('subscription.ratingValue')}
+              sub={t('subscription.ratingStars')}
+              icon="star-filled"
+            />
           </View>
 
           <CosmicButton
-            title={selected === 'free' ? 'Continue with Free' : 'Continue'}
+            title={selected === 'free' ? t('subscription.continueFree') : t('subscription.continueCta')}
             onPress={onContinue}
             loading={loading}
             style={{ marginTop: spacing.lg }}
           />
 
           <View style={styles.legalRow}>
-            <Text style={styles.legalText}>Terms of Use</Text>
+            <Text style={styles.legalText}>{t('subscription.legal.terms')}</Text>
             <Text style={styles.legalDot}>·</Text>
-            <Text style={styles.legalText}>Privacy Policy</Text>
+            <Text style={styles.legalText}>{t('subscription.legal.privacy')}</Text>
             <Text style={styles.legalDot}>·</Text>
-            <Text style={styles.legalText}>Restore Purchases</Text>
+            <Text style={styles.legalText}>{t('subscription.legal.restore')}</Text>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -139,15 +151,16 @@ function PlanCard({
   onPress: () => void;
   isCurrent: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Pressable onPress={onPress} style={[styles.planCard, selected && styles.planCardSelected]}>
       {isCurrent ? (
         <View style={[styles.popular, styles.currentBadge]}>
-          <Text style={styles.popularText}>CURRENT PLAN</Text>
+          <Text style={styles.popularText}>{t('subscription.currentPlan')}</Text>
         </View>
       ) : plan.recommended ? (
         <View style={styles.popular}>
-          <Text style={styles.popularText}>MOST POPULAR</Text>
+          <Text style={styles.popularText}>{t('subscription.mostPopular')}</Text>
         </View>
       ) : null}
       <LinearGradient
@@ -171,7 +184,7 @@ function PlanCard({
       <Text style={styles.planTagline}>{plan.tagline}</Text>
       <Text style={styles.planPrice}>
         {plan.price}
-        <Text style={styles.cadence}> /month</Text>
+        <Text style={styles.cadence}>{t('subscription.perMonth')}</Text>
       </Text>
       <Text style={styles.cadenceMeta}>{plan.cadence}</Text>
       <View style={styles.featureList}>
@@ -205,7 +218,7 @@ function PlanCard({
             isCurrent && { color: colors.goldBright },
           ]}
         >
-          {isCurrent ? 'Active' : plan.ctaLabel}
+          {isCurrent ? t('subscription.active') : plan.ctaLabel}
         </Text>
       </View>
     </Pressable>
