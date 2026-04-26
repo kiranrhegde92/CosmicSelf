@@ -1,10 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
+import EventSource from 'react-native-sse';
 import { httpsCallable } from 'firebase/functions';
 
 import { env, features } from '../config/env';
 import { ASTROLOGERS } from '../data/astrologers';
 import { computeNatalChart, ZODIAC_GLYPHS } from './astroEngine';
-import { getFns } from './firebaseClient';
+import { getFirebaseAuth, getFns } from './firebaseClient';
 import { withRetry } from './retry';
 import {
   getBirthInputFromStore,
@@ -147,9 +148,211 @@ async function mockSend(astrologerId?: string): Promise<string> {
   return `${moodPrefix(astrologerId)}${FALLBACK_REPLIES[idx]}`;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Streaming                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export type StreamHandlers = {
+  onDelta: (chunkText: string) => void;
+  onDone: (finalText: string) => void;
+  onError?: (message: string) => void;
+};
+
+export type StreamHandle = { cancel: () => void };
+
+function streamUrl(): string {
+  const region = env.firebase.region || 'us-central1';
+  const projectId = env.firebase.projectId;
+  return `https://${region}-${projectId}.cloudfunctions.net/astrologerChatStream`;
+}
+
+async function streamViaFunctions(
+  message: string,
+  history: ChatMessage[],
+  systemPrompt: string,
+  handlers: StreamHandlers,
+): Promise<StreamHandle> {
+  const auth = getFirebaseAuth();
+  const user = auth?.currentUser;
+  if (!user) throw new Error('Not signed in');
+  const token = await user.getIdToken();
+
+  // The streaming endpoint accepts the same payload as the callable.
+  const body = JSON.stringify({
+    message,
+    systemPrompt,
+    history: history.slice(-10),
+    model: env.anthropic.model,
+    maxTokens: 512,
+  });
+
+  // react-native-sse opens an HTTP connection, parses Server-Sent Events,
+  // and dispatches them to listeners. It supports POST + custom headers,
+  // which the browser-native EventSource doesn't.
+  const es = new EventSource<'delta' | 'done' | 'error'>(streamUrl(), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body,
+    pollingInterval: 0, // disable auto-reconnect; one-shot stream
+  });
+
+  let collected = '';
+
+  es.addEventListener('delta', (event) => {
+    if (typeof event.data !== 'string') return;
+    try {
+      const parsed = JSON.parse(event.data) as { text?: string };
+      if (parsed.text) {
+        collected += parsed.text;
+        handlers.onDelta(parsed.text);
+      }
+    } catch {
+      /* skip malformed chunk */
+    }
+  });
+
+  es.addEventListener('done', (event) => {
+    let finalText = collected;
+    if (typeof event.data === 'string') {
+      try {
+        const parsed = JSON.parse(event.data) as { reply?: string };
+        if (parsed.reply) finalText = parsed.reply;
+      } catch {
+        /* fall back to collected deltas */
+      }
+    }
+    handlers.onDone(finalText || FALLBACK_REPLIES[0]);
+    es.close();
+  });
+
+  es.addEventListener('error', (event) => {
+    const data =
+      'data' in event && typeof event.data === 'string'
+        ? safeParse<{ message?: string }>(event.data)
+        : null;
+    handlers.onError?.(data?.message ?? 'Chat stream failed');
+    es.close();
+  });
+
+  return { cancel: () => es.close() };
+}
+
+function safeParse<T>(s: string): T | null {
+  try {
+    return JSON.parse(s) as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stream a "typing" reply chunk-by-chunk. Picks the same priority chain as
+ * `send()`: Functions SSE → direct Anthropic stream → mock typing simulation.
+ *
+ * Returns a handle with `cancel()` so callers can abort if the user navigates
+ * away mid-reply. Always invokes exactly one of `onDone` or `onError`.
+ */
+async function streamSend(
+  message: string,
+  options: {
+    astrologerId?: string;
+    mode?: 'serious' | 'fun';
+    history?: ChatMessage[];
+  },
+  handlers: StreamHandlers,
+): Promise<StreamHandle> {
+  const systemPrompt = buildSystemPrompt(options.astrologerId, options.mode);
+  const history = options.history ?? [];
+
+  if (features.liveChatViaFunctions) {
+    try {
+      return await streamViaFunctions(message, history, systemPrompt, handlers);
+    } catch {
+      // fall through to direct/mock
+    }
+  }
+
+  if (features.liveChatDirect) {
+    return streamDirect(message, history, systemPrompt, handlers);
+  }
+
+  return streamMock(options.astrologerId, handlers);
+}
+
+function streamDirect(
+  message: string,
+  history: ChatMessage[],
+  systemPrompt: string,
+  handlers: StreamHandlers,
+): StreamHandle {
+  const a = getDirectClient();
+  if (!a) {
+    handlers.onError?.('Direct Anthropic client unavailable');
+    return { cancel: () => {} };
+  }
+  const stream = a.messages.stream({
+    model: env.anthropic.model || 'claude-haiku-4-5',
+    max_tokens: 512,
+    system: systemPrompt,
+    messages: [...history.slice(-10), { role: 'user', content: message }],
+  });
+  let collected = '';
+  let cancelled = false;
+  stream.on('text', (delta) => {
+    if (cancelled) return;
+    collected += delta;
+    handlers.onDelta(delta);
+  });
+  stream
+    .finalMessage()
+    .then(() => {
+      if (!cancelled) handlers.onDone(collected || FALLBACK_REPLIES[0]);
+    })
+    .catch((err: { message?: string }) => {
+      if (!cancelled) handlers.onError?.(err.message ?? 'Direct stream failed');
+    });
+  return {
+    cancel: () => {
+      cancelled = true;
+      stream.abort();
+    },
+  };
+}
+
+function streamMock(
+  astrologerId: string | undefined,
+  handlers: StreamHandlers,
+): StreamHandle {
+  const reply =
+    moodPrefix(astrologerId) +
+    FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)];
+  const tokens = reply.match(/\S+\s*/g) ?? [reply];
+  let i = 0;
+  let cancelled = false;
+  const tick = () => {
+    if (cancelled) return;
+    if (i >= tokens.length) {
+      handlers.onDone(reply);
+      return;
+    }
+    handlers.onDelta(tokens[i]);
+    i += 1;
+    setTimeout(tick, 35 + Math.random() * 60);
+  };
+  setTimeout(tick, 250);
+  return { cancel: () => { cancelled = true; } };
+}
+
 export const aiChatService = {
   /** "live" means a real model is reachable through *some* path. */
   isLive: features.liveChatViaFunctions || features.liveChatDirect,
+
+  /** Token-by-token streaming via SSE, with direct + mock fallbacks. */
+  streamSend,
 
   async send(
     message: string,

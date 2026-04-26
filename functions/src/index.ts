@@ -1,9 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
+import * as admin from 'firebase-admin';
 import { defineSecret } from 'firebase-functions/params';
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { setGlobalOptions } from 'firebase-functions/v2';
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
+
+if (!admin.apps.length) admin.initializeApp();
 
 /**
  * Anthropic key as a Cloud Functions secret. Set with:
@@ -42,9 +45,36 @@ function sanitizeHistory(input: unknown): ChatMessage[] {
       cleaned.push({ role, content: content.slice(0, 4000) });
     }
   }
-  // Cap context length on the server too, regardless of what the client sent.
   return cleaned.slice(-20);
 }
+
+function clamp(n: number, lo: number, hi: number) {
+  return Math.min(Math.max(n, lo), hi);
+}
+
+function validatePayload(raw: unknown): {
+  message: string;
+  systemPrompt: string;
+  history: ChatMessage[];
+  model: string;
+  maxTokens: number;
+} {
+  const data = (raw ?? {}) as Payload;
+  const message = (data.message ?? '').toString().trim();
+  if (!message) throw new Error('Message is required.');
+  if (message.length > 4000) throw new Error('Message is too long.');
+  return {
+    message,
+    systemPrompt: (data.systemPrompt ?? '').toString().slice(0, 8000),
+    history: sanitizeHistory(data.history),
+    model: ALLOWED_MODELS.has(data.model ?? '') ? data.model! : DEFAULT_MODEL,
+    maxTokens: clamp(data.maxTokens ?? 512, 64, 1024),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Non-streaming callable — kept for clients that don't speak SSE.            */
+/* -------------------------------------------------------------------------- */
 
 export const astrologerChat = onCall(
   {
@@ -58,31 +88,21 @@ export const astrologerChat = onCall(
       throw new HttpsError('unauthenticated', 'Sign in to chat with the stars.');
     }
 
-    const data = (request.data ?? {}) as Payload;
-    const message = (data.message ?? '').toString().trim();
-    if (!message) {
-      throw new HttpsError('invalid-argument', 'Message is required.');
+    let parsed;
+    try {
+      parsed = validatePayload(request.data);
+    } catch (err) {
+      throw new HttpsError('invalid-argument', (err as Error).message);
     }
-    if (message.length > 4000) {
-      throw new HttpsError('invalid-argument', 'Message is too long.');
-    }
-
-    const model = ALLOWED_MODELS.has(data.model ?? '') ? data.model! : DEFAULT_MODEL;
-    const maxTokens = Math.min(Math.max(data.maxTokens ?? 512, 64), 1024);
-    const systemPrompt = (data.systemPrompt ?? '').toString().slice(0, 8000);
-    const history = sanitizeHistory(data.history);
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
 
     try {
       const response = await client.messages.create({
-        model,
-        max_tokens: maxTokens,
-        system: systemPrompt || undefined,
-        messages: [
-          ...history,
-          { role: 'user', content: message },
-        ],
+        model: parsed.model,
+        max_tokens: parsed.maxTokens,
+        system: parsed.systemPrompt || undefined,
+        messages: [...parsed.history, { role: 'user', content: parsed.message }],
       });
 
       const text = response.content
@@ -104,6 +124,111 @@ export const astrologerChat = onCall(
         throw new HttpsError('resource-exhausted', 'The stars are busy. Try again shortly.');
       }
       throw new HttpsError('internal', e.message ?? 'Chat call failed');
+    }
+  },
+);
+
+/* -------------------------------------------------------------------------- */
+/* Streaming HTTP endpoint — Server-Sent Events.                              */
+/*                                                                            */
+/* Why HTTP instead of callable: firebase-functions v6 supports streaming    */
+/* callable, but the client SDK at firebase ^10.14 doesn't yet expose the    */
+/* matching `httpsCallable.stream()`. SSE-over-HTTP works in every browser,  */
+/* in Node, and (with `react-native-sse`) in React Native — so the client    */
+/* picks this path whenever it can.                                           */
+/*                                                                            */
+/* Auth: the client passes a Firebase ID token in the `Authorization` header.*/
+/* CORS is on so a future web build can hit the same endpoint.                */
+/* -------------------------------------------------------------------------- */
+
+export const astrologerChatStream = onRequest(
+  {
+    secrets: [ANTHROPIC_API_KEY],
+    timeoutSeconds: 120,
+    memory: '256MiB',
+    cors: true,
+  },
+  async (req, res): Promise<void> => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const authHeader = req.headers.authorization ?? '';
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.slice('Bearer '.length)
+      : null;
+    if (!token) {
+      res.status(401).json({ error: 'Missing bearer token' });
+      return;
+    }
+
+    try {
+      await admin.auth().verifyIdToken(token);
+    } catch {
+      res.status(401).json({ error: 'Invalid auth token' });
+      return;
+    }
+
+    let parsed;
+    try {
+      parsed = validatePayload(req.body);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // disable any proxy buffering
+    res.flushHeaders?.();
+
+    const send = (event: string, data: unknown) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+    try {
+      const stream = client.messages.stream({
+        model: parsed.model,
+        max_tokens: parsed.maxTokens,
+        system: parsed.systemPrompt || undefined,
+        messages: [...parsed.history, { role: 'user', content: parsed.message }],
+      });
+
+      let fullText = '';
+      for await (const event of stream) {
+        if (
+          event.type === 'content_block_delta' &&
+          event.delta.type === 'text_delta'
+        ) {
+          fullText += event.delta.text;
+          send('delta', { text: event.delta.text });
+        }
+      }
+
+      const final = await stream.finalMessage();
+      send('done', {
+        reply: fullText,
+        usage: {
+          input: final.usage.input_tokens,
+          output: final.usage.output_tokens,
+        },
+      });
+    } catch (err) {
+      const e = err as { status?: number; message?: string };
+      send('error', {
+        code: e.status === 429 ? 'rate_limited' : 'internal',
+        message:
+          e.status === 429
+            ? 'The stars are busy. Try again shortly.'
+            : e.message ?? 'Chat stream failed',
+      });
+    } finally {
+      res.end();
     }
   },
 );

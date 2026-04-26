@@ -30,7 +30,7 @@ import { ASTROLOGERS } from '../data/astrologers';
 import { sampleMessages } from '../data/mockInsights';
 import { useAuthStore } from '../store/authStore';
 import { useOnboardingStore } from '../store/onboardingStore';
-import { aiChatService, ChatMessage } from '../services/aiChatService';
+import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatService';
 import { chatRepository } from '../services/chatRepository';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
@@ -51,6 +51,14 @@ export default function ChatScreen() {
   const [typing, setTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
+  const streamHandleRef = useRef<StreamHandle | null>(null);
+
+  // Cancel any in-flight stream when the screen unmounts (e.g. user nav'd away).
+  useEffect(() => {
+    return () => {
+      streamHandleRef.current?.cancel();
+    };
+  }, []);
 
   const scrollDown = () => {
     requestAnimationFrame(() => {
@@ -90,22 +98,69 @@ export default function ChatScreen() {
     setText('');
     setTyping(true);
 
-    // Fire-and-forget persistence — don't block the UI on Firestore.
     chatRepository.appendMessage(astrologerId, { from: 'user', text: trimmed });
 
     const history: ChatMessage[] = nextMessages.map((m) => ({
       role: m.from === 'user' ? 'user' : 'assistant',
       content: m.text,
     }));
-    const reply = await aiChatService.send(trimmed, {
-      astrologerId,
-      mode,
-      history,
-    });
-    const aiMsg: Message = { id: `a-${Date.now()}`, from: 'ai', text: reply };
-    setMessages((m) => [...m, aiMsg]);
-    chatRepository.appendMessage(astrologerId, { from: 'ai', text: reply });
-    setTyping(false);
+
+    // We don't render an empty AI bubble up front — typing dots cover the
+    // wait. The bubble appears the moment the first delta arrives.
+    const aiId = `a-${Date.now()}`;
+    let started = false;
+
+    streamHandleRef.current?.cancel();
+    streamHandleRef.current = await aiChatService.streamSend(
+      trimmed,
+      { astrologerId, mode, history },
+      {
+        onDelta: (chunk) => {
+          if (!started) {
+            started = true;
+            setTyping(false);
+            setMessages((m) => [...m, { id: aiId, from: 'ai', text: chunk }]);
+          } else {
+            setMessages((m) =>
+              m.map((msg) =>
+                msg.id === aiId ? { ...msg, text: msg.text + chunk } : msg,
+              ),
+            );
+          }
+        },
+        onDone: (finalText) => {
+          setTyping(false);
+          setMessages((m) => {
+            const exists = m.some((msg) => msg.id === aiId);
+            if (exists) {
+              return m.map((msg) =>
+                msg.id === aiId ? { ...msg, text: finalText } : msg,
+              );
+            }
+            // No deltas arrived (e.g. provider returned in one shot via mock).
+            return [...m, { id: aiId, from: 'ai', text: finalText }];
+          });
+          chatRepository.appendMessage(astrologerId, {
+            from: 'ai',
+            text: finalText,
+          });
+          streamHandleRef.current = null;
+        },
+        onError: (errMessage) => {
+          setTyping(false);
+          setMessages((m) =>
+            m
+              .filter((msg) => msg.id !== aiId)
+              .concat({
+                id: `err-${Date.now()}`,
+                from: 'ai',
+                text: `The cosmos hiccupped: ${errMessage}`,
+              }),
+          );
+          streamHandleRef.current = null;
+        },
+      },
+    );
   };
 
   // Suppress the unused-variable lint for hydrated; reserved for the
