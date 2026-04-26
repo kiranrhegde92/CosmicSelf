@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { withRetry } from './retry';
 
 export type GeocodedPlace = {
   id: string;
@@ -34,10 +35,16 @@ export const geocodingService = {
     const trimmed = query.trim();
     if (trimmed.length < 2) return [];
     const url = `${env.geocoding.endpoint}?name=${encodeURIComponent(trimmed)}&count=${limit}&language=en&format=json`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const json = (await res.json()) as { results?: RawHit[] };
-    return (json.results ?? []).map(toPlace);
+    try {
+      const json = await withRetry(async () => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`geocoding HTTP ${res.status}`);
+        return (await res.json()) as { results?: RawHit[] };
+      });
+      return (json.results ?? []).map(toPlace);
+    } catch {
+      return [];
+    }
   },
 };
 

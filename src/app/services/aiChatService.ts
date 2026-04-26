@@ -5,6 +5,7 @@ import { env, features } from '../config/env';
 import { ASTROLOGERS } from '../data/astrologers';
 import { computeNatalChart, ZODIAC_GLYPHS } from './astroEngine';
 import { getFns } from './firebaseClient';
+import { withRetry } from './retry';
 import {
   getBirthInputFromStore,
   useOnboardingStore,
@@ -107,13 +108,15 @@ async function sendViaFunctions(
   const fns = getFns();
   if (!fns) throw new Error('Firebase Functions client unavailable');
   const callable = httpsCallable<CallableInput, CallableOutput>(fns, 'astrologerChat');
-  const res = await callable({
-    message,
-    systemPrompt,
-    history: history.slice(-10),
-    model: env.anthropic.model,
-    maxTokens: 512,
-  });
+  const res = await withRetry(() =>
+    callable({
+      message,
+      systemPrompt,
+      history: history.slice(-10),
+      model: env.anthropic.model,
+      maxTokens: 512,
+    }),
+  );
   return res.data.reply || FALLBACK_REPLIES[0];
 }
 
