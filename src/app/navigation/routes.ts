@@ -21,6 +21,7 @@ export const MAIN_ROUTES = {
   EditBirthDetails: 'EditBirthDetails',
   EditAstrologer: 'EditAstrologer',
   EditPartner: 'EditPartner',
+  Partners: 'Partners',
   SavedInsights: 'SavedInsights',
   SavedInsightDetail: 'SavedInsightDetail',
   DailyInsightHistory: 'DailyInsightHistory',
@@ -61,7 +62,8 @@ export type MainStackParamList = {
   EditProfile: undefined;
   EditBirthDetails: undefined;
   EditAstrologer: undefined;
-  EditPartner: undefined;
+  EditPartner: { id?: string } | undefined;
+  Partners: undefined;
   SavedInsights: undefined;
   SavedInsightDetail: { id: string };
   DailyInsightHistory: undefined;

@@ -14,6 +14,7 @@ import { astrologyService } from '../services/astrologyService';
 import { aiChatService, type StreamHandle } from '../services/aiChatService';
 import { synthesizeCompatibility, type CompatibilityReport } from '../services/compatibilityEngine';
 import {
+  getActivePartner,
   getBirthInputFromStore,
   partnerToBirthInput,
   useOnboardingStore,
@@ -48,7 +49,7 @@ function buildUserMessage(report: CompatibilityReport): string {
 export default function FullReportScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const userBirth = useOnboardingStore((s) => getBirthInputFromStore(s));
-  const partner = useOnboardingStore((s) => s.partner);
+  const partner = useOnboardingStore((s) => getActivePartner(s));
 
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);

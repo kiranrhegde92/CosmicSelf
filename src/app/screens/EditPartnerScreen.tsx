@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
@@ -20,6 +20,7 @@ import DateField from '../components/ui/DateField';
 import LocationAutocomplete from '../components/ui/LocationAutocomplete';
 import TimeDialPicker from '../components/astrology/TimeDialPicker';
 import {
+  newPartnerId,
   useOnboardingStore,
   type BirthLocation,
   type Partner,
@@ -33,40 +34,64 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function EditPartnerScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const persisted = useOnboardingStore((s) => s.partner);
-  const setPartner = useOnboardingStore((s) => s.setPartner);
+  const route = useRoute<RouteProp<MainStackParamList, 'EditPartner'>>();
+  const editingId = route.params?.id;
 
-  const [name, setName] = useState(persisted?.name ?? '');
-  const [date, setDate] = useState(persisted?.birthDate ?? '1995-05-20');
-  const [time, setTime] = useState<Partner['birthTime']>(
-    persisted?.birthTime ?? { hour: 8, minute: 30, ampm: 'AM' },
+  const existing = useOnboardingStore((s) =>
+    editingId ? s.partners.find((p) => p.id === editingId) ?? null : null,
   );
-  const [locationText, setLocationText] = useState(persisted?.birthLocation.label ?? '');
+  const addPartner = useOnboardingStore((s) => s.addPartner);
+  const updatePartner = useOnboardingStore((s) => s.updatePartner);
+  const removePartner = useOnboardingStore((s) => s.removePartner);
+  const setActivePartnerId = useOnboardingStore((s) => s.setActivePartnerId);
+
+  const [name, setName] = useState(existing?.name ?? '');
+  const [date, setDate] = useState(existing?.birthDate ?? '1995-05-20');
+  const [time, setTime] = useState<Partner['birthTime']>(
+    existing?.birthTime ?? { hour: 8, minute: 30, ampm: 'AM' },
+  );
+  const [locationText, setLocationText] = useState(
+    existing?.birthLocation.label ?? '',
+  );
   const [locationData, setLocationData] = useState<BirthLocation | null>(
-    persisted?.birthLocation ?? null,
+    existing?.birthLocation ?? null,
   );
 
   const canSave = name.trim().length > 0 && !!date && !!locationData;
 
   const onSave = () => {
     if (!canSave || !locationData) return;
-    const next = {
-      name: name.trim(),
-      birthDate: date,
-      birthTime: time,
-      birthLocation: locationData,
-    };
-    setPartner(next);
-    // Fire-and-forget — Firestore is the cross-device source of truth, but
-    // we don't make the user wait for the round-trip.
-    partnerRepository.save(next);
-    analytics.track(Events.PartnerAdded);
+    if (existing) {
+      const patch = {
+        name: name.trim(),
+        birthDate: date,
+        birthTime: time,
+        birthLocation: locationData,
+      };
+      updatePartner(existing.id, patch);
+      partnerRepository.save({ ...existing, ...patch });
+      analytics.track(Events.PartnerAdded);
+    } else {
+      const next: Partner = {
+        id: newPartnerId(),
+        name: name.trim(),
+        birthDate: date,
+        birthTime: time,
+        birthLocation: locationData,
+      };
+      addPartner(next);
+      // Make a brand-new partner the active one — the most common intent.
+      setActivePartnerId(next.id);
+      partnerRepository.save(next);
+      analytics.track(Events.PartnerAdded);
+    }
     navigation.goBack();
   };
 
-  const onClear = () => {
-    setPartner(null);
-    partnerRepository.clear();
+  const onRemove = () => {
+    if (!existing) return;
+    removePartner(existing.id);
+    partnerRepository.remove(existing.id);
     navigation.goBack();
   };
 
@@ -78,7 +103,7 @@ export default function EditPartnerScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScreenHeader
-            title={persisted ? 'Edit Partner' : 'Add a Partner'}
+            title={existing ? 'Edit Partner' : 'Add a Partner'}
             subtitle="Their birth details unlock the synastry"
             showBack
             onBack={() => navigation.goBack()}
@@ -143,11 +168,11 @@ export default function EditPartnerScreen() {
               style={{ marginTop: spacing.lg }}
             />
 
-            {persisted && (
+            {existing && (
               <CosmicButton
                 title="Remove Partner"
                 variant="outline"
-                onPress={onClear}
+                onPress={onRemove}
                 style={{ marginTop: spacing.sm }}
               />
             )}

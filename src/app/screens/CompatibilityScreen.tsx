@@ -15,7 +15,7 @@ import DailyInsightCard from '../components/astrology/DailyInsightCard';
 import ZodiacWheel from '../components/cosmic/ZodiacWheel';
 import { astrologyService } from '../services/astrologyService';
 import { tipFor, type CompatibilityReport } from '../services/compatibilityEngine';
-import { useOnboardingStore } from '../store/onboardingStore';
+import { getActivePartner, useOnboardingStore } from '../store/onboardingStore';
 import { usePremium } from '../store/usePremium';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -28,7 +28,8 @@ type LiveOrMock =
 
 export default function CompatibilityScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const partner = useOnboardingStore((s) => s.partner);
+  const partner = useOnboardingStore((s) => getActivePartner(s));
+  const partnersCount = useOnboardingStore((s) => s.partners.length);
   const userBirthDate = useOnboardingStore((s) => s.birthDate);
   const premium = usePremium();
 
@@ -64,7 +65,8 @@ export default function CompatibilityScreen() {
     }, [refresh]),
   );
 
-  const onEditPartner = () => navigation.navigate('EditPartner');
+  const onOpenPartners = () => navigation.navigate('Partners');
+  const onAddPartner = () => navigation.navigate('EditPartner', {});
 
   return (
     <CosmicBackground intensity="medium">
@@ -74,8 +76,8 @@ export default function CompatibilityScreen() {
           subtitle="See how your energies align"
           showBack
           onBack={() => navigation.goBack()}
-          rightIcon={partner ? 'settings' : undefined}
-          onRightPress={onEditPartner}
+          rightIcon="settings"
+          onRightPress={onOpenPartners}
         />
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -84,13 +86,21 @@ export default function CompatibilityScreen() {
           {state.kind === 'live' ? (
             <LiveReport
               report={state.report}
-              onEditPartner={onEditPartner}
+              onEditPartner={onOpenPartners}
               onFullReport={() => navigation.navigate('FullReport')}
             />
           ) : (
             <Placeholder
               hasUserChart={!!userBirthDate}
-              onAddPartner={onEditPartner}
+              onAddPartner={onAddPartner}
+            />
+          )}
+          {partnersCount === 0 && state.kind === 'live' && (
+            <CosmicButton
+              title="Add Partner"
+              icon="plus"
+              onPress={onAddPartner}
+              style={{ marginTop: spacing.lg }}
             />
           )}
         </ScrollView>

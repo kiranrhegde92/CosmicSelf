@@ -15,6 +15,7 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import EditBirthDetailsScreen from '../screens/EditBirthDetailsScreen';
 import EditAstrologerScreen from '../screens/EditAstrologerScreen';
 import EditPartnerScreen from '../screens/EditPartnerScreen';
+import PartnersListScreen from '../screens/PartnersListScreen';
 import FullReportScreen from '../screens/FullReportScreen';
 import SavedInsightsScreen from '../screens/SavedInsightsScreen';
 import SavedInsightDetailScreen from '../screens/SavedInsightDetailScreen';
@@ -62,6 +63,7 @@ export default function MainNavigator() {
       <Stack.Screen name="EditBirthDetails" component={EditBirthDetailsScreen} />
       <Stack.Screen name="EditAstrologer" component={EditAstrologerScreen} />
       <Stack.Screen name="EditPartner" component={EditPartnerScreen} />
+      <Stack.Screen name="Partners" component={PartnersListScreen} />
       <Stack.Screen name="FullReport" component={FullReportScreen} />
       <Stack.Screen name="SavedInsights" component={SavedInsightsScreen} />
       <Stack.Screen name="SavedInsightDetail" component={SavedInsightDetailScreen} />
