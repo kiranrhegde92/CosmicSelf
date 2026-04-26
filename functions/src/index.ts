@@ -11,6 +11,17 @@ setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 if (!admin.apps.length) admin.initializeApp();
 
 /**
+ * App Check enforcement is gated on `process.env.ENFORCE_APP_CHECK === 'true'`.
+ * Set it via:
+ *   firebase functions:config:set appcheck.enforce=true
+ * (then redeploy) — or use Cloud Run env in v2.
+ *
+ * Off by default so dev/staging without an attestation provider still works.
+ * Turn on for production once the client ships RNFB App Check tokens.
+ */
+const ENFORCE_APP_CHECK = process.env.ENFORCE_APP_CHECK === 'true';
+
+/**
  * Anthropic key as a Cloud Functions secret. Set with:
  *   firebase functions:secrets:set ANTHROPIC_API_KEY
  *
@@ -138,6 +149,32 @@ async function enforceQuota(uid: string): Promise<void> {
   }
 }
 
+/**
+ * App Check verification for onRequest endpoints. v2 onCall handles this
+ * automatically via the `enforceAppCheck` field; for raw HTTP we have to
+ * verify the `X-Firebase-AppCheck` header ourselves. Returns true on pass,
+ * false (and writes a 401 response) on fail. No-op when enforcement is off.
+ */
+async function verifyAppCheckOrReject(
+  req: { headers: Record<string, string | string[] | undefined> },
+  res: { status: (n: number) => { json: (b: unknown) => void } },
+): Promise<boolean> {
+  if (!ENFORCE_APP_CHECK) return true;
+  const header = req.headers['x-firebase-appcheck'];
+  const token = Array.isArray(header) ? header[0] : header;
+  if (!token) {
+    res.status(401).json({ error: 'Missing App Check token' });
+    return false;
+  }
+  try {
+    await admin.appCheck().verifyToken(token);
+    return true;
+  } catch {
+    res.status(401).json({ error: 'Invalid App Check token' });
+    return false;
+  }
+}
+
 async function logUsage(uid: string, delta: UsageDelta): Promise<void> {
   try {
     const db = admin.firestore();
@@ -240,7 +277,7 @@ export const astrologerChat = onCall(
     secrets: [ANTHROPIC_API_KEY],
     timeoutSeconds: 60,
     memory: '256MiB',
-    enforceAppCheck: false,
+    enforceAppCheck: ENFORCE_APP_CHECK,
   },
   async (request) => {
     if (!request.auth) {
@@ -330,6 +367,8 @@ export const astrologerChatStream = onRequest(
       res.status(405).json({ error: 'Method not allowed' });
       return;
     }
+
+    if (!(await verifyAppCheckOrReject(req, res))) return;
 
     const authHeader = req.headers.authorization ?? '';
     const token = authHeader.startsWith('Bearer ')
@@ -475,6 +514,8 @@ export const transcribeAudio = onRequest(
       return;
     }
 
+    if (!(await verifyAppCheckOrReject(req, res))) return;
+
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : null;
     if (!token) {
@@ -590,7 +631,7 @@ export const deleteAccount = onCall(
   {
     timeoutSeconds: 120,
     memory: '256MiB',
-    enforceAppCheck: false,
+    enforceAppCheck: ENFORCE_APP_CHECK,
   },
   async (request) => {
     if (!request.auth) {

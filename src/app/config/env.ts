@@ -46,6 +46,17 @@ export const env = {
   // Sign-in method -> Google (which creates the OAuth credentials in GCP).
   // Web client ID is enough to make Expo Go work; iOS/Android client IDs
   // unlock native EAS dev/prod builds.
+  appCheck: {
+    /**
+     * Optional debug token for App Check during dev. Get one from Firebase
+     * Console → Project Settings → App Check → Debug tokens. Setting this
+     * EXPO_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN env var registers it with
+     * the JS SDK so the dev build mints debug attestations the Functions
+     * accept once enforcement is enabled.
+     */
+    debugToken: get('EXPO_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN'),
+  },
+
   google: {
     webClientId: get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'),
     iosClientId: get('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID'),
