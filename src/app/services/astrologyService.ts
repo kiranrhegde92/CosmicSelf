@@ -4,6 +4,10 @@ import {
   type NatalChart,
 } from './astroEngine';
 import {
+  synthesizeCompatibility,
+  type CompatibilityReport,
+} from './compatibilityEngine';
+import {
   notificationBlurbFor,
   synthesizeDailyInsight,
   type DailyInsight,
@@ -11,6 +15,7 @@ import {
 import { birthChart, dailyInsight, compatibility } from '../data/mockInsights';
 import {
   getBirthInputFromStore,
+  partnerToBirthInput,
   useOnboardingStore,
 } from '../store/onboardingStore';
 
@@ -92,7 +97,20 @@ export const astrologyService = {
     return computeNatalChart(input);
   },
 
-  async getCompatibility() {
-    return compatibility;
+  /**
+   * Returns a real compatibility report when both birth inputs are
+   * available; otherwise the bundled mock so the screen still has shape.
+   */
+  async getCompatibility(): Promise<CompatibilityReport | typeof compatibility> {
+    const state = useOnboardingStore.getState();
+    const userInput = getBirthInputFromStore(state);
+    const partner = state.partner;
+    if (!userInput || !partner) return compatibility;
+    return synthesizeCompatibility(
+      userInput,
+      partnerToBirthInput(partner),
+      'You',
+      partner.name || 'Them',
+    );
   },
 };

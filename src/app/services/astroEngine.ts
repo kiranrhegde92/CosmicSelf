@@ -292,6 +292,140 @@ function aspectWeight(a: AspectType): number {
 }
 
 /**
+ * Synastry: aspects between the planets in chart A and the planets in
+ * chart B. Used to score romantic / interpersonal compatibility.
+ */
+export type SynastryPlanet =
+  | TransitingPlanet
+  | 'Ascendant';
+
+export type SynastryAspect = {
+  bodyA: SynastryPlanet;
+  bodyB: SynastryPlanet;
+  aspect: AspectType;
+  /** Distance from exact aspect angle in degrees. 0 = exact. */
+  orb: number;
+  /** -1 (very tense) .. +1 (very harmonious). */
+  signedStrength: number;
+};
+
+const PLANET_WEIGHTS: Record<SynastryPlanet, number> = {
+  Sun: 1.0,
+  Moon: 1.0,
+  Ascendant: 0.95,
+  Venus: 0.95,
+  Mars: 0.9,
+  Mercury: 0.85,
+  Jupiter: 0.8,
+  Saturn: 0.8,
+};
+
+const ASPECT_POLARITY: Record<AspectType, number> = {
+  // Conjunctions are valence-by-pair; we treat them as mildly positive by
+  // default and let the planet-pair adjustment pull the cases that hurt
+  // (Mars-Saturn, etc.) into negative territory.
+  conjunction: 0.55,
+  trine: 1.0,
+  sextile: 0.85,
+  square: -1.0,
+  opposition: -0.85,
+};
+
+/** Heavy-handed hand-tuned table — the pairs people care about most. */
+const PAIR_NUDGE: Partial<Record<`${SynastryPlanet}-${SynastryPlanet}`, number>> = {
+  'Sun-Moon': 0.45,
+  'Moon-Sun': 0.45,
+  'Venus-Mars': 0.3,
+  'Mars-Venus': 0.3,
+  'Sun-Venus': 0.2,
+  'Venus-Sun': 0.2,
+  'Moon-Venus': 0.2,
+  'Venus-Moon': 0.2,
+  // Mars-Saturn conjunctions and squares are notoriously friction-heavy.
+  'Mars-Saturn': -0.35,
+  'Saturn-Mars': -0.35,
+  'Sun-Saturn': -0.15,
+  'Saturn-Sun': -0.15,
+};
+
+const SYNASTRY_BODIES: { name: SynastryPlanet; pick: (c: NatalChart) => number }[] = [
+  { name: 'Sun', pick: (c) => c.sun.longitude },
+  { name: 'Moon', pick: (c) => c.moon.longitude },
+  { name: 'Ascendant', pick: (c) => c.ascendant.longitude },
+];
+
+const SYNASTRY_TRANSITING: { name: SynastryPlanet; body: typeof Body[keyof typeof Body] }[] = [
+  { name: 'Mercury', body: Body.Mercury },
+  { name: 'Venus', body: Body.Venus },
+  { name: 'Mars', body: Body.Mars },
+  { name: 'Jupiter', body: Body.Jupiter },
+  { name: 'Saturn', body: Body.Saturn },
+];
+
+function chartLongitudes(chart: NatalChart): { name: SynastryPlanet; lon: number }[] {
+  const out: { name: SynastryPlanet; lon: number }[] = SYNASTRY_BODIES.map((b) => ({
+    name: b.name,
+    lon: b.pick(chart),
+  }));
+  // For non-Sun/Moon/Asc planets we re-derive longitudes from the chart's
+  // birth datetime — kept here rather than persisting them on NatalChart so
+  // the chart object stays small and serializable.
+  const utc = new Date(chart.meta.isoDate);
+  for (const sp of SYNASTRY_TRANSITING) {
+    out.push({ name: sp.name, lon: planetLongitude(sp.body, utc) });
+  }
+  return out;
+}
+
+export function computeSynastry(
+  chartA: NatalChart,
+  chartB: NatalChart,
+): { aspects: SynastryAspect[]; score: number } {
+  const aLons = chartLongitudes(chartA);
+  const bLons = chartLongitudes(chartB);
+
+  const aspects: SynastryAspect[] = [];
+  let signedSum = 0;
+  let weightSum = 0;
+
+  for (const a of aLons) {
+    for (const b of bLons) {
+      const sep = angularSeparation(a.lon, b.lon);
+      for (const aspect of Object.keys(ASPECT_ANGLES) as AspectType[]) {
+        const orb = Math.abs(sep - ASPECT_ANGLES[aspect]);
+        if (orb > ASPECT_ORBS[aspect]) continue;
+        const closeness = 1 - orb / ASPECT_ORBS[aspect]; // 0..1
+        const planetWeight = PLANET_WEIGHTS[a.name] * PLANET_WEIGHTS[b.name];
+        const polarity = ASPECT_POLARITY[aspect];
+        const nudge = PAIR_NUDGE[`${a.name}-${b.name}` as keyof typeof PAIR_NUDGE] ?? 0;
+        const signed = (polarity + nudge) * closeness;
+        aspects.push({
+          bodyA: a.name,
+          bodyB: b.name,
+          aspect,
+          orb,
+          signedStrength: signed,
+        });
+        signedSum += signed * planetWeight;
+        weightSum += planetWeight;
+      }
+    }
+  }
+
+  // Normalize: the typical chart pair produces ~12-25 aspects in orb. Map
+  // the signed mean (~ -1..+1) onto a 0..100 score with a soft cap so neither
+  // extreme is ever reachable (keeps "10%" / "100%" off the UI).
+  const mean = weightSum === 0 ? 0 : signedSum / weightSum;
+  const raw = 50 + mean * 45;
+  const score = Math.round(Math.max(20, Math.min(95, raw)));
+
+  // Sort highest-impact aspects first for downstream prose.
+  aspects.sort((x, y) => Math.abs(y.signedStrength) - Math.abs(x.signedStrength));
+
+  return { aspects, score };
+}
+
+/**
  * Compute every aspect within orb between the major transiting planets and
  * the natal Sun / Moon / Ascendant on the given date. Sorted by strength,
  * strongest first.

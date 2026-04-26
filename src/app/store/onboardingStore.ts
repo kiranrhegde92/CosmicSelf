@@ -12,6 +12,15 @@ export type BirthLocation = {
   tzOffsetMinutes?: number;
 };
 
+export type Partner = {
+  /** Display name like "Alex" or "Mom". */
+  name: string;
+  /** ISO date YYYY-MM-DD */
+  birthDate: string;
+  birthTime: { hour: number; minute: number; ampm: 'AM' | 'PM' };
+  birthLocation: BirthLocation;
+};
+
 type OnboardingState = {
   /** ISO date YYYY-MM-DD */
   birthDate: string | null;
@@ -20,6 +29,8 @@ type OnboardingState = {
   selectedAstrologerId: string | null;
   mode: Mode;
   hasOnboarded: boolean;
+  /** Last partner the user ran a compatibility report against. */
+  partner: Partner | null;
 
   setBirthDate: (d: string) => void;
   setBirthTime: (t: { hour: number; minute: number; ampm: 'AM' | 'PM' }) => void;
@@ -27,6 +38,7 @@ type OnboardingState = {
   setAstrologer: (id: string) => void;
   setMode: (m: Mode) => void;
   completeOnboarding: () => void;
+  setPartner: (p: Partner | null) => void;
   reset: () => void;
 };
 
@@ -37,6 +49,7 @@ const initialState = {
   selectedAstrologerId: 'veda' as string | null,
   mode: 'serious' as Mode,
   hasOnboarded: false,
+  partner: null as Partner | null,
 };
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -50,6 +63,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       setAstrologer: (id) => set({ selectedAstrologerId: id }),
       setMode: (m) => set({ mode: m }),
       completeOnboarding: () => set({ hasOnboarded: true }),
+      setPartner: (p) => set({ partner: p }),
       reset: () => set({ ...initialState }),
     }),
     {
@@ -62,23 +76,44 @@ export const useOnboardingStore = create<OnboardingState>()(
         selectedAstrologerId: state.selectedAstrologerId,
         mode: state.mode,
         hasOnboarded: state.hasOnboarded,
+        partner: state.partner,
       }),
-      version: 2,
+      version: 3,
     },
   ),
 );
 
+function timeToHours(t: { hour: number; minute: number; ampm: 'AM' | 'PM' }): {
+  hh: string;
+  mm: string;
+} {
+  let h = t.hour % 12;
+  if (t.ampm === 'PM') h += 12;
+  return {
+    hh: h.toString().padStart(2, '0'),
+    mm: t.minute.toString().padStart(2, '0'),
+  };
+}
+
 /** Build an ISO local datetime string + tz offset from persisted onboarding. */
 export function getBirthInputFromStore(state: OnboardingState) {
   if (!state.birthDate || !state.birthTime || !state.birthLocation) return null;
-  let h = state.birthTime.hour % 12;
-  if (state.birthTime.ampm === 'PM') h += 12;
-  const hh = h.toString().padStart(2, '0');
-  const mm = state.birthTime.minute.toString().padStart(2, '0');
+  const { hh, mm } = timeToHours(state.birthTime);
   return {
     isoLocal: `${state.birthDate}T${hh}:${mm}:00`,
     lat: state.birthLocation.lat,
     lon: state.birthLocation.lon,
     tzOffsetMinutes: state.birthLocation.tzOffsetMinutes ?? 0,
+  };
+}
+
+/** Build an ISO local datetime string + tz offset from a Partner record. */
+export function partnerToBirthInput(p: Partner) {
+  const { hh, mm } = timeToHours(p.birthTime);
+  return {
+    isoLocal: `${p.birthDate}T${hh}:${mm}:00`,
+    lat: p.birthLocation.lat,
+    lon: p.birthLocation.lon,
+    tzOffsetMinutes: p.birthLocation.tzOffsetMinutes ?? 0,
   };
 }

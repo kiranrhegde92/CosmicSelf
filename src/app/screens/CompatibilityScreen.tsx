@@ -1,24 +1,58 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicButton from '../components/ui/CosmicButton';
+import CosmicIcon from '../components/ui/CosmicIcon';
 import CompatibilityMeter from '../components/astrology/CompatibilityMeter';
 import DailyInsightCard from '../components/astrology/DailyInsightCard';
 import ZodiacWheel from '../components/cosmic/ZodiacWheel';
+import { astrologyService } from '../services/astrologyService';
+import { tipFor, type CompatibilityReport } from '../services/compatibilityEngine';
+import { useOnboardingStore } from '../store/onboardingStore';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { compatibility } from '../data/mockInsights';
 import { MainStackParamList } from '../navigation/routes';
+
+type LiveOrMock =
+  | { kind: 'live'; report: CompatibilityReport }
+  | { kind: 'placeholder' };
 
 export default function CompatibilityScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const partner = useOnboardingStore((s) => s.partner);
+  const userBirthDate = useOnboardingStore((s) => s.birthDate);
+
+  const [state, setState] = useState<LiveOrMock>({ kind: 'placeholder' });
+
+  const refresh = useCallback(async () => {
+    if (!userBirthDate || !partner) {
+      setState({ kind: 'placeholder' });
+      return;
+    }
+    const result = await astrologyService.getCompatibility();
+    if ('cards' in result && 'partnerA' in result && Array.isArray(result.cards)) {
+      // Both shapes have these; we narrow to the live one when score is a
+      // computed number (the mock uses a literal too — both work).
+      setState({ kind: 'live', report: result as CompatibilityReport });
+    } else {
+      setState({ kind: 'placeholder' });
+    }
+  }, [partner, userBirthDate]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
+
+  const onEditPartner = () => navigation.navigate('EditPartner');
 
   return (
     <CosmicBackground intensity="medium">
@@ -28,72 +62,139 @@ export default function CompatibilityScreen() {
           subtitle="See how your energies align"
           showBack
           onBack={() => navigation.goBack()}
+          rightIcon={partner ? 'settings' : undefined}
+          onRightPress={onEditPartner}
         />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.duo}>
-            <View style={styles.partner}>
-              <View style={styles.wheelMini}>
-                <ZodiacWheel size={120} rotateSpeed={90000} showSigns={false} intensity="low" />
-                <Text style={styles.miniGlyph}>{compatibility.partnerA.glyph}</Text>
-              </View>
-              <Text style={styles.partnerName}>{compatibility.partnerA.label}</Text>
-              <Text style={styles.partnerSign}>{compatibility.partnerA.sign}</Text>
-            </View>
-
-            <View style={styles.merge}>
-              <Text style={styles.mergeText}>×</Text>
-            </View>
-
-            <View style={styles.partner}>
-              <View style={styles.wheelMini}>
-                <ZodiacWheel size={120} rotateSpeed={90000} showSigns={false} intensity="low" />
-                <Text style={[styles.miniGlyph, { color: '#C4A7FF' }]}>
-                  {compatibility.partnerB.glyph}
-                </Text>
-              </View>
-              <Text style={styles.partnerName}>{compatibility.partnerB.label}</Text>
-              <Text style={styles.partnerSign}>{compatibility.partnerB.sign}</Text>
-            </View>
-          </View>
-
-          <View style={styles.meterWrap}>
-            <CompatibilityMeter score={compatibility.score} label={compatibility.label} />
-          </View>
-
-          <View style={styles.grid}>
-            {compatibility.cards.map((c) => (
-              <View key={c.key} style={styles.cell}>
-                <DailyInsightCard
-                  icon={c.icon}
-                  title={c.title}
-                  value={c.value}
-                  description={c.description}
-                  tone={c.tone}
-                />
-              </View>
-            ))}
-          </View>
-
-          <GlassCard style={styles.tipCard}>
-            <Text style={styles.tipTitle}>Cosmic Tip</Text>
-            <Text style={styles.tipBody}>
-              You ground each other in opposite ways. Cherish the differences — they are the
-              poetry of this connection.
-            </Text>
-          </GlassCard>
-
-          <CosmicButton
-            title="View Full Report"
-            icon="book"
-            onPress={() => {}}
-            style={{ marginTop: spacing.lg }}
-          />
+          {state.kind === 'live' ? (
+            <LiveReport report={state.report} onEditPartner={onEditPartner} />
+          ) : (
+            <Placeholder
+              hasUserChart={!!userBirthDate}
+              onAddPartner={onEditPartner}
+            />
+          )}
         </ScrollView>
       </SafeAreaView>
     </CosmicBackground>
+  );
+}
+
+function PartnerSlot({
+  glyph,
+  label,
+  sign,
+  tint,
+  onPress,
+}: {
+  glyph: string;
+  label: string;
+  sign: string;
+  tint?: string;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={styles.partner} disabled={!onPress}>
+      <View style={styles.wheelMini}>
+        <ZodiacWheel size={120} rotateSpeed={90000} showSigns={false} intensity="low" />
+        <Text style={[styles.miniGlyph, tint ? { color: tint } : null]}>{glyph}</Text>
+      </View>
+      <Text style={styles.partnerName} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.partnerSign}>{sign}</Text>
+    </Pressable>
+  );
+}
+
+function LiveReport({
+  report,
+  onEditPartner,
+}: {
+  report: CompatibilityReport;
+  onEditPartner: () => void;
+}) {
+  return (
+    <>
+      <View style={styles.duo}>
+        <PartnerSlot
+          glyph={report.partnerA.glyph}
+          label={report.partnerA.label}
+          sign={report.partnerA.sign}
+        />
+        <View style={styles.merge}>
+          <Text style={styles.mergeText}>×</Text>
+        </View>
+        <PartnerSlot
+          glyph={report.partnerB.glyph}
+          label={report.partnerB.label}
+          sign={report.partnerB.sign}
+          tint="#C4A7FF"
+          onPress={onEditPartner}
+        />
+      </View>
+
+      <View style={styles.meterWrap}>
+        <CompatibilityMeter score={report.score} label={report.label} />
+      </View>
+
+      <View style={styles.grid}>
+        {report.cards.map((c) => (
+          <View key={c.key} style={styles.cell}>
+            <DailyInsightCard
+              icon={c.icon}
+              title={c.title}
+              value={c.value}
+              description={c.description}
+              tone={c.tone}
+            />
+          </View>
+        ))}
+      </View>
+
+      <GlassCard style={styles.tipCard}>
+        <Text style={styles.tipTitle}>Cosmic Tip</Text>
+        <Text style={styles.tipBody}>{tipFor(report)}</Text>
+      </GlassCard>
+
+      <CosmicButton
+        title="View Full Report"
+        icon="book"
+        onPress={() => {}}
+        style={{ marginTop: spacing.lg }}
+      />
+    </>
+  );
+}
+
+function Placeholder({
+  hasUserChart,
+  onAddPartner,
+}: {
+  hasUserChart: boolean;
+  onAddPartner: () => void;
+}) {
+  return (
+    <View style={styles.placeholder}>
+      <View style={styles.placeholderIcon}>
+        <CosmicIcon name="heart" color={colors.goldPrimary} size={28} />
+      </View>
+      <Text style={styles.placeholderTitle}>Add a partner to see real synastry</Text>
+      <Text style={styles.placeholderBody}>
+        {hasUserChart
+          ? 'Your chart is ready. Add the other person\'s birth date, time, and city — the score below comes from real aspect angles between your two charts, not zodiac stereotypes.'
+          : 'Finish your own birth details first, then add a partner to compare charts.'}
+      </Text>
+      <CosmicButton
+        title={hasUserChart ? 'Add Partner' : 'Set Birth Details'}
+        icon="plus"
+        onPress={onAddPartner}
+        style={{ marginTop: spacing.lg }}
+      />
+    </View>
   );
 }
 
@@ -110,6 +211,7 @@ const styles = StyleSheet.create({
   },
   partner: {
     alignItems: 'center',
+    flex: 1,
   },
   wheelMini: {
     width: 120,
@@ -165,6 +267,38 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     marginTop: 6,
+    lineHeight: 22,
+  },
+  placeholder: {
+    paddingTop: spacing.xl,
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  placeholderIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(246,200,95,0.12)',
+    borderWidth: 1.4,
+    borderColor: 'rgba(246,200,95,0.5)',
+    shadowColor: colors.goldPrimary,
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  placeholderTitle: {
+    ...typography.section,
+    color: colors.white,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  placeholderBody: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
     lineHeight: 22,
   },
 });
