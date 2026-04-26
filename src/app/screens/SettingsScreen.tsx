@@ -85,6 +85,8 @@ export default function SettingsScreen() {
 
   const toggleHoroscope = async (next: boolean) => {
     setHoroscopeEnabled(next);
+    // Mirror the toggle to Firestore so the scheduled push Function honors it.
+    await notificationsService.setServerDailyHoroscope(next);
     if (next && pushEnabled) {
       await notificationsService.scheduleDailyHoroscope();
     } else {

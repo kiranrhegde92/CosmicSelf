@@ -122,12 +122,29 @@ export const notificationsService = {
     const auth = getFirebaseAuth();
     if (!db || !auth?.currentUser) return token;
 
+    // Read the user's current preferences so the server scheduler honors
+    // the same toggles the local schedule uses.
+    let dailyHoroscope = true;
+    try {
+      const { useAppStore } = await import('../store/appStore');
+      dailyHoroscope = useAppStore.getState().dailyHoroscopeEnabled;
+    } catch {
+      /* default to true if the store isn't available (shouldn't happen) */
+    }
+
     try {
       await setDoc(
         doc(db, `users/${auth.currentUser.uid}/profile/push`),
         {
           expoPushToken: token,
           platform: Platform.OS,
+          dailyHoroscope,
+          // Local-time preference for when the user wants their daily push.
+          // The scheduled Function fires once per UTC slot and only delivers
+          // to users whose local hour matches; the client picks 8:00 by
+          // default but Settings can refine this later.
+          localHour: 8,
+          tzOffsetMinutes: -new Date().getTimezoneOffset(),
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -136,6 +153,27 @@ export const notificationsService = {
       /* mirror failure is non-fatal */
     }
     return token;
+  },
+
+  /**
+   * Update just the dailyHoroscope flag on the server-side push doc, without
+   * fetching a new token. Used when the user flips the Daily Horoscope
+   * toggle in Settings.
+   */
+  async setServerDailyHoroscope(enabled: boolean): Promise<void> {
+    if (!features.firebase) return;
+    const db = getDb();
+    const auth = getFirebaseAuth();
+    if (!db || !auth?.currentUser) return;
+    try {
+      await setDoc(
+        doc(db, `users/${auth.currentUser.uid}/profile/push`),
+        { dailyHoroscope: enabled, updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+    } catch {
+      /* no-op */
+    }
   },
 
   /**

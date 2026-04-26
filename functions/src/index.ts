@@ -2,9 +2,17 @@ import Anthropic from '@anthropic-ai/sdk';
 import * as admin from 'firebase-admin';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
+
+import {
+  notificationBlurbFor,
+  synthesizeDailyInsight,
+} from './lib/dailyInsightEngine';
+import type { BirthInput } from './lib/astroEngine';
+import type { ExpoPushMessage } from 'expo-server-sdk';
 
 import {
   type ChatMessage,
@@ -18,6 +26,7 @@ import {
 } from './lib/quota';
 import { ALLOWED_AUDIO_MIME, MAX_AUDIO_BYTES, extForMime } from './lib/mime';
 import { isValidExpoToken, sendExpoPush } from './lib/expoPush';
+import { currentLocalHour } from './lib/timeWindow';
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
@@ -668,5 +677,156 @@ export const sendTestNotification = onCall(
     }
 
     return { ok: true, ticketId: ticket?.status === 'ok' ? ticket.id : null };
+  },
+);
+
+/* -------------------------------------------------------------------------- */
+/* Scheduled daily push notification.                                         */
+/*                                                                            */
+/* Runs every UTC hour. Per-user push doc carries the user's local-time       */
+/* preference (hour + tzOffsetMinutes), so each invocation finds the cohort   */
+/* whose local clock is currently at their chosen send time and pushes them   */
+/* a personalized headline based on today's transits + their natal chart.    */
+/*                                                                            */
+/* Why hourly instead of daily-at-08:00-UTC: users live across 24 timezones; */
+/* a single global slot would deliver "morning" pushes at midnight for half  */
+/* the world. Hourly cron + per-user filter = each user gets their headline  */
+/* near their own breakfast.                                                  */
+/*                                                                            */
+/* Failure modes:                                                             */
+/*   - missing birth → skip                                                  */
+/*   - missing token → skip                                                  */
+/*   - dailyHoroscope === false → skip                                       */
+/*   - push delivery error 'DeviceNotRegistered' → clear the token doc      */
+/*                                                                            */
+/* Idempotent within an hour (the cohort filter only matches once per user). */
+/* -------------------------------------------------------------------------- */
+
+type PushDoc = {
+  expoPushToken?: string;
+  dailyHoroscope?: boolean;
+  localHour?: number;
+  tzOffsetMinutes?: number;
+};
+
+type BirthDoc = {
+  isoLocal?: string;
+  lat?: number;
+  lon?: number;
+  tzOffsetMinutes?: number;
+};
+
+export const dailyHoroscopePush = onSchedule(
+  {
+    // Every hour on the hour, UTC.
+    schedule: '0 * * * *',
+    timeZone: 'UTC',
+    timeoutSeconds: 540,
+    memory: '512MiB',
+    retryCount: 1,
+  },
+  async () => {
+    const db = admin.firestore();
+    const now = new Date();
+
+    // Collection-group query gathers every user's push doc in one read.
+    const pushSnap = await db.collectionGroup('profile')
+      .where('expoPushToken', '!=', null)
+      .get();
+
+    const pending: Array<{ uid: string; message: ExpoPushMessage }> = [];
+
+    for (const docSnap of pushSnap.docs) {
+      // Only the document literally named "push" is ours; the same
+      // collection-group query also reaches profile/birth and
+      // profile/entitlement which carry no token. Filter defensively.
+      if (docSnap.id !== 'push') continue;
+
+      const push = docSnap.data() as PushDoc;
+      if (push.dailyHoroscope === false) continue;
+      const token = push.expoPushToken;
+      if (!isValidExpoToken(token)) continue;
+
+      const wantHour = typeof push.localHour === 'number' ? push.localHour : 8;
+      const tzOffset = typeof push.tzOffsetMinutes === 'number'
+        ? push.tzOffsetMinutes
+        : 0;
+      if (currentLocalHour(tzOffset, now) !== wantHour) continue;
+
+      // uid is the second-to-last segment of users/{uid}/profile/push
+      const uid = docSnap.ref.parent.parent?.id;
+      if (!uid) continue;
+
+      // Fetch birth alongside; without it, fall back to a generic blurb.
+      let birth: BirthInput | null = null;
+      try {
+        const birthSnap = await db
+          .doc(`users/${uid}/profile/birth`)
+          .get();
+        const data = birthSnap.data() as BirthDoc | undefined;
+        if (
+          data?.isoLocal &&
+          typeof data.lat === 'number' &&
+          typeof data.lon === 'number'
+        ) {
+          birth = {
+            isoLocal: data.isoLocal,
+            lat: data.lat,
+            lon: data.lon,
+            tzOffsetMinutes: data.tzOffsetMinutes ?? 0,
+          };
+        }
+      } catch {
+        /* fall through to generic body */
+      }
+
+      const body = birth
+        ? notificationBlurbFor(synthesizeDailyInsight(birth, now))
+        : 'The stars have new guidance for you. Tap to read.';
+
+      pending.push({
+        uid,
+        message: {
+          to: token,
+          title: 'Your daily cosmic insight ✦',
+          body,
+          data: { route: 'DailyInsight' },
+          sound: 'default',
+        },
+      });
+    }
+
+    if (pending.length === 0) {
+      console.log('dailyHoroscopePush: no recipients this hour');
+      return;
+    }
+
+    const tickets = await sendExpoPush(pending.map((p) => p.message));
+
+    // Walk tickets in lockstep with `pending` to attribute errors back to
+    // a uid. Clear DeviceNotRegistered tokens so we stop billing for them.
+    for (let i = 0; i < tickets.length; i += 1) {
+      const ticket = tickets[i];
+      const { uid } = pending[i];
+      if (ticket.status !== 'error') continue;
+      const detailsCode =
+        ticket.details && typeof ticket.details === 'object'
+          ? (ticket.details as { error?: string }).error
+          : undefined;
+      if (detailsCode === 'DeviceNotRegistered') {
+        try {
+          await db.doc(`users/${uid}/profile/push`).update({
+            expoPushToken: admin.firestore.FieldValue.delete(),
+            tokenInvalidatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch {
+          /* best-effort cleanup */
+        }
+      } else {
+        console.warn('dailyHoroscopePush: delivery error', { uid, ticket });
+      }
+    }
+
+    console.log(`dailyHoroscopePush: sent ${pending.length}, errors ${tickets.filter((t) => t.status === 'error').length}`);
   },
 );
