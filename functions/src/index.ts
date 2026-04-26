@@ -359,3 +359,67 @@ function extFor(mime: string): string {
   if (mime.includes('ogg')) return 'ogg';
   return 'bin';
 }
+
+/* -------------------------------------------------------------------------- */
+/* Account deletion — GDPR / App Store compliance.                            */
+/*                                                                            */
+/* Removes everything tied to the signed-in user, in this order:              */
+/*   1. Storage: users/{uid}/* (avatar + anything we add later)               */
+/*   2. Firestore: users/{uid} subtree (recursive)                            */
+/*   3. Auth: Firebase Auth user record                                       */
+/*                                                                            */
+/* Steps run sequentially so a failure mid-flight leaves the Auth user        */
+/* intact — they can sign in and retry. Storage + Firestore failures are      */
+/* logged and surfaced; an Auth deletion failure rolls forward (data is gone, */
+/* user can request deletion again from a fresh session).                     */
+/* -------------------------------------------------------------------------- */
+
+async function deleteUserStorage(uid: string): Promise<void> {
+  const bucket = admin.storage().bucket();
+  await bucket.deleteFiles({ prefix: `users/${uid}/` });
+}
+
+async function deleteUserFirestore(uid: string): Promise<void> {
+  const db = admin.firestore();
+  // recursiveDelete handles all subcollections (threads, savedInsights,
+  // partners, profile, etc.) without us enumerating them by hand.
+  await db.recursiveDelete(db.doc(`users/${uid}`));
+}
+
+export const deleteAccount = onCall(
+  {
+    timeoutSeconds: 120,
+    memory: '256MiB',
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Sign in to delete your account.');
+    }
+    const uid = request.auth.uid;
+
+    try {
+      await deleteUserStorage(uid);
+    } catch (err) {
+      console.error('deleteAccount: storage cleanup failed', { uid, err });
+      throw new HttpsError('internal', 'Could not clear stored files. Try again.');
+    }
+
+    try {
+      await deleteUserFirestore(uid);
+    } catch (err) {
+      console.error('deleteAccount: firestore cleanup failed', { uid, err });
+      throw new HttpsError('internal', 'Could not clear your data. Try again.');
+    }
+
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (err) {
+      // Data is gone — log and let the client treat this as success-with-warning.
+      console.error('deleteAccount: auth deletion failed (data was removed)', { uid, err });
+      return { ok: true, authRemoved: false as const };
+    }
+
+    return { ok: true, authRemoved: true as const };
+  },
+);

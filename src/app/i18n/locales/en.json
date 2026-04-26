@@ -127,7 +127,18 @@
       "title": "Choose language",
       "body": "Pick the language CosmicSelf speaks to you in."
     },
-    "exportTitle": "CosmicSelf data export"
+    "exportTitle": "CosmicSelf data export",
+    "danger": {
+      "section": "Danger Zone",
+      "deleteAccount": "Delete Account",
+      "alertTitle": "Delete your account?",
+      "alertBody": "This permanently removes your birth details, saved insights, partners, chat history, and your account itself. This cannot be undone.",
+      "confirm": "Delete forever",
+      "successTitle": "Account deleted",
+      "successBody": "Your data has been removed. We're sorry to see you go.",
+      "failureTitle": "Couldn't delete account",
+      "failureBody": "Something went wrong. Please try again or contact support."
+    }
   },
   "editProfile": {
     "title": "Edit Profile",

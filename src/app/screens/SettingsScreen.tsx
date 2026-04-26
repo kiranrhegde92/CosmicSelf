@@ -28,6 +28,7 @@ import { useEntitlementStore, type Tier } from '../store/entitlementStore';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { notificationsService } from '../services/notificationsService';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
+import { deleteAccount } from '../services/accountService';
 import { MainStackParamList } from '../navigation/routes';
 
 // Languages with shipped JSON resource bundles. Add a new entry here once
@@ -147,6 +148,13 @@ export default function SettingsScreen() {
         { key: 'contact', label: t('settings.item.contact'), icon: 'chat', type: 'navigate' },
       ],
     },
+    {
+      key: 'danger',
+      title: t('settings.danger.section'),
+      items: [
+        { key: 'deleteAccount', label: t('settings.danger.deleteAccount'), icon: 'close', type: 'navigate' },
+      ],
+    },
   ];
 
   const switchValue = (key: string) => {
@@ -249,7 +257,42 @@ export default function SettingsScreen() {
               encodeURIComponent(t('settingsExtras.contact.mailBody')),
           },
         });
+      case 'deleteAccount':
+        return confirmDeleteAccount();
     }
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      t('settings.danger.alertTitle'),
+      t('settings.danger.alertBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.danger.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+              // Auth state listener will flip the navigator to the auth stack
+              // automatically; clear local state so the next signed-in user
+              // doesn't inherit our cached onboarding/profile/etc.
+              useAuthStore.getState().logout();
+              useOnboardingStore.getState().reset();
+              Alert.alert(
+                t('settings.danger.successTitle'),
+                t('settings.danger.successBody'),
+              );
+            } catch {
+              Alert.alert(
+                t('settings.danger.failureTitle'),
+                t('settings.danger.failureBody'),
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
