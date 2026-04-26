@@ -1,3 +1,29 @@
 {
-  "projects": {}
+  "projects": {
+    "default": "cosmicself-prod",
+    "prod": "cosmicself-prod",
+    "staging": "cosmicself-staging",
+    "dev": "cosmicself-dev"
+  },
+  "_comment": [
+    "Three-environment topology. Replace the project IDs above with your",
+    "actual Firebase project IDs:",
+    "  - cosmicself-prod    : production traffic",
+    "  - cosmicself-staging : pre-prod, RC test entitlements, App Check off",
+    "  - cosmicself-dev     : developer sandbox, emulators-equivalent",
+    "",
+    "Switch the active project locally with:",
+    "  firebase use staging",
+    "  firebase use prod",
+    "",
+    "GitHub Actions selects the target via FIREBASE_PROJECT_ID per branch",
+    "(see .github/workflows/deploy.yml). Each project has its own service",
+    "account JSON in repo secrets:",
+    "  FIREBASE_SERVICE_ACCOUNT_PROD",
+    "  FIREBASE_SERVICE_ACCOUNT_STAGING",
+    "",
+    "Client config (apiKey, etc.) is per-project too. EAS build profiles",
+    "should set EXPO_PUBLIC_FIREBASE_* per environment so the right project",
+    "is targeted at runtime."
+  ]
 }
