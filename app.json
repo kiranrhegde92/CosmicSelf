@@ -13,7 +13,8 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cosmicself.app"
+      "bundleIdentifier": "com.cosmicself.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.cosmicself.app",
@@ -24,6 +25,8 @@
     "web": {
       "bundler": "metro"
     },
-    "plugins": []
+    "plugins": [
+      "expo-apple-authentication"
+    ]
   }
 }

@@ -41,11 +41,31 @@ export const env = {
     // Open-Meteo geocoding API — free, no key required.
     endpoint: 'https://geocoding-api.open-meteo.com/v1/search',
   },
+
+  // Google OAuth client IDs come from Firebase Console -> Authentication ->
+  // Sign-in method -> Google (which creates the OAuth credentials in GCP).
+  // Web client ID is enough to make Expo Go work; iOS/Android client IDs
+  // unlock native EAS dev/prod builds.
+  google: {
+    webClientId: get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'),
+    iosClientId: get('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID'),
+    androidClientId: get('EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID'),
+  },
 } as const;
 
+const firebaseReady = !!(env.firebase.apiKey && env.firebase.projectId && env.firebase.appId);
+
 export const features = {
-  firebase: !!(env.firebase.apiKey && env.firebase.projectId && env.firebase.appId),
-  liveChatViaFunctions: !!(env.firebase.apiKey && env.firebase.projectId && env.firebase.appId),
+  firebase: firebaseReady,
+  liveChatViaFunctions: firebaseReady,
   liveChatDirect: !!env.anthropic.apiKey, // dev-only fallback
   revenueCat: !!(env.revenuecat.iosKey || env.revenuecat.androidKey),
+  /** True when Firebase + at least one Google client ID are configured. */
+  googleSignIn: firebaseReady && !!env.google.webClientId,
+  /**
+   * Apple Sign-In is wired wherever Firebase is configured; the actual
+   * runtime gate (iOS 13+ on a signed-in device) is checked by
+   * `AppleAuthentication.isAvailableAsync()` inside useSocialAuth.
+   */
+  appleSignIn: firebaseReady,
 } as const;

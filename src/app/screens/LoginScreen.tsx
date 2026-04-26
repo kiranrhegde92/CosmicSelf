@@ -23,10 +23,14 @@ import { typography } from '../theme/typography';
 import { AuthStackParamList } from '../navigation/routes';
 import { authService } from '../services/authService';
 import { useAuthStore } from '../store/authStore';
+import { useSocialAuth } from '../store/useSocialAuth';
 
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const login = useAuthStore((s) => s.login);
+  const social = useSocialAuth({
+    onSuccess: () => navigation.replace('BirthDetails'),
+  });
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -119,19 +123,31 @@ export default function LoginScreen() {
                     title="Google"
                     icon="google"
                     variant="glass"
-                    onPress={() => {}}
+                    loading={social.loading === 'google'}
+                    disabled={!social.googleAvailable || social.loading !== null}
+                    onPress={social.onGoogle}
                   />
                 </View>
-                <View style={{ width: spacing.sm }} />
-                <View style={{ flex: 1 }}>
-                  <CosmicButton
-                    title="Apple"
-                    icon="apple"
-                    variant="glass"
-                    onPress={() => {}}
-                  />
-                </View>
+                {social.appleAvailable && (
+                  <>
+                    <View style={{ width: spacing.sm }} />
+                    <View style={{ flex: 1 }}>
+                      <CosmicButton
+                        title="Apple"
+                        icon="apple"
+                        variant="glass"
+                        loading={social.loading === 'apple'}
+                        disabled={social.loading !== null}
+                        onPress={social.onApple}
+                      />
+                    </View>
+                  </>
+                )}
               </View>
+
+              {social.error && (
+                <Text style={styles.socialError}>{social.error.message}</Text>
+              )}
             </GlassCard>
 
             <View style={styles.footer}>
@@ -196,6 +212,12 @@ const styles = StyleSheet.create({
   },
   socialRow: {
     flexDirection: 'row',
+  },
+  socialError: {
+    ...typography.caption,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
   footer: {
     flexDirection: 'row',

@@ -23,12 +23,16 @@ import { typography } from '../theme/typography';
 import { AuthStackParamList } from '../navigation/routes';
 import { authService } from '../services/authService';
 import { useAuthStore } from '../store/authStore';
+import { useSocialAuth } from '../store/useSocialAuth';
 
 type Field = 'name' | 'email' | 'password' | 'confirm';
 
 export default function SignupScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const signup = useAuthStore((s) => s.signup);
+  const social = useSocialAuth({
+    onSuccess: () => navigation.replace('BirthDetails'),
+  });
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -135,6 +139,50 @@ export default function SignupScreen() {
                 style={{ marginTop: spacing.sm }}
               />
 
+              {(social.googleAvailable || social.appleAvailable) && (
+                <>
+                  <View style={styles.dividerRow}>
+                    <View style={styles.divLine} />
+                    <Text style={styles.divText}>or sign up with</Text>
+                    <View style={styles.divLine} />
+                  </View>
+
+                  <View style={styles.socialRow}>
+                    {social.googleAvailable && (
+                      <View style={{ flex: 1 }}>
+                        <CosmicButton
+                          title="Google"
+                          icon="google"
+                          variant="glass"
+                          loading={social.loading === 'google'}
+                          disabled={!agree || social.loading !== null}
+                          onPress={social.onGoogle}
+                        />
+                      </View>
+                    )}
+                    {social.googleAvailable && social.appleAvailable && (
+                      <View style={{ width: spacing.sm }} />
+                    )}
+                    {social.appleAvailable && (
+                      <View style={{ flex: 1 }}>
+                        <CosmicButton
+                          title="Apple"
+                          icon="apple"
+                          variant="glass"
+                          loading={social.loading === 'apple'}
+                          disabled={!agree || social.loading !== null}
+                          onPress={social.onApple}
+                        />
+                      </View>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {social.error && (
+                <Text style={styles.socialError}>{social.error.message}</Text>
+              )}
+
               <Text style={styles.privacy}>Your data is secure and never shared.</Text>
             </GlassCard>
 
@@ -196,6 +244,30 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     flex: 1,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+    gap: spacing.sm,
+  },
+  divLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(246,200,95,0.18)',
+  },
+  divText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  socialRow: {
+    flexDirection: 'row',
+  },
+  socialError: {
+    ...typography.caption,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
   privacy: {
     ...typography.caption,

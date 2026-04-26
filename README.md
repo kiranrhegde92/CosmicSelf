@@ -294,7 +294,35 @@ are present. **For local iteration without redeploying Functions**, set
 `EXPO_PUBLIC_ANTHROPIC_API_KEY` and the client will hit Anthropic directly
 (dev-only path).
 
-### 5. Optional — RevenueCat
+### 5. Optional — Google + Apple Sign-In
+
+Both flow through Firebase Auth's `signInWithCredential`.
+
+**Google.** In Firebase Console → Authentication → Sign-in method → Google,
+enable the provider. Firebase auto-creates OAuth client IDs in your linked
+GCP project. Grab them from **GCP Console → APIs & Services → Credentials**:
+
+```env
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...apps.googleusercontent.com   # required
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...apps.googleusercontent.com   # native iOS
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=...apps.googleusercontent.com  # native Android
+```
+
+The web client ID alone is enough to make Google sign-in work in Expo Go.
+Native EAS builds need all three. The Android client ID also requires the
+SHA-1 fingerprint from your keystore — `eas credentials` can show it.
+
+**Apple.** In Firebase Console → Authentication → Sign-in method → Apple,
+enable the provider, then in the **Apple Developer Portal**:
+1. Add the *Sign in with Apple* capability to your App ID (`com.cosmicself.app`).
+2. (Web/Android only — not needed for native iOS) create a Service ID and a
+   private key, paste them into the Firebase Console.
+
+For native iOS no extra env vars are needed — `app.json` already declares
+`usesAppleSignIn: true` and the `expo-apple-authentication` plugin. The
+button hides on Android automatically.
+
+### 6. Optional — RevenueCat
 
 ```env
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=
