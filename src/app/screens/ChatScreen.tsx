@@ -35,6 +35,7 @@ import { aiChatService, ChatMessage, StreamHandle } from '../services/aiChatServ
 import { analytics, Events } from '../services/analyticsService';
 import { chatRepository } from '../services/chatRepository';
 import { haptics } from '../services/hapticsService';
+import { ttsService } from '../services/ttsService';
 import { voiceService } from '../services/voiceService';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
@@ -55,16 +56,38 @@ export default function ChatScreen() {
   const [typing, setTyping] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
   const streamHandleRef = useRef<StreamHandle | null>(null);
 
-  // Cancel any in-flight stream / recording when the screen unmounts.
+  // Cancel any in-flight stream / recording / TTS when the screen unmounts.
   useEffect(() => {
     return () => {
       streamHandleRef.current?.cancel();
       voiceService.cancel().catch(() => {});
+      ttsService.stop().catch(() => {});
     };
   }, []);
+
+  const onToggleTts = (msg: Message) => {
+    if (msg.from !== 'ai') return;
+    if (speakingId === msg.id) {
+      ttsService.stop().catch(() => {});
+      setSpeakingId(null);
+      return;
+    }
+    setSpeakingId(msg.id);
+    analytics.track(Events.ChatTtsPlayed, {
+      astrologer: astrologerId,
+      length: msg.text.length,
+    });
+    ttsService.speak(msg.text, {
+      onDone: () =>
+        setSpeakingId((current) => (current === msg.id ? null : current)),
+      onError: () =>
+        setSpeakingId((current) => (current === msg.id ? null : current)),
+    });
+  };
 
   const onMicPress = async () => {
     if (voiceState === 'recording') {
@@ -310,7 +333,13 @@ export default function ChatScreen() {
             data={messages}
             keyExtractor={(m) => m.id}
             contentContainerStyle={styles.list}
-            renderItem={({ item }) => <Bubble msg={item} />}
+            renderItem={({ item }) => (
+              <Bubble
+                msg={item}
+                speaking={speakingId === item.id}
+                onTtsPress={() => onToggleTts(item)}
+              />
+            )}
             ListFooterComponent={typing ? <TypingBubble /> : null}
             onContentSizeChange={scrollDown}
           />
@@ -367,7 +396,15 @@ export default function ChatScreen() {
   );
 }
 
-function Bubble({ msg }: { msg: Message }) {
+function Bubble({
+  msg,
+  speaking,
+  onTtsPress,
+}: {
+  msg: Message;
+  speaking: boolean;
+  onTtsPress: () => void;
+}) {
   const isUser = msg.from === 'user';
   return (
     <Animated.View entering={FadeInUp.duration(300)} style={[styles.bubbleRow, isUser && { justifyContent: 'flex-end' }]}>
@@ -396,6 +433,23 @@ function Bubble({ msg }: { msg: Message }) {
         <Text style={[styles.bubbleText, isUser ? { color: colors.white } : { color: colors.white }]}>
           {msg.text}
         </Text>
+        {!isUser && (
+          // `sparkle` is reused as the audio affordance — IconName has no
+          // dedicated speaker glyph and extending the union for one screen
+          // would be heavy-handed.
+          <Pressable
+            onPress={onTtsPress}
+            accessibilityLabel={speaking ? 'Stop reading aloud' : 'Read aloud'}
+            hitSlop={8}
+            style={styles.ttsBtn}
+          >
+            <CosmicIcon
+              name="sparkle"
+              size={14}
+              color={speaking ? colors.goldBright : colors.textSecondary}
+            />
+          </Pressable>
+        )}
       </View>
     </Animated.View>
   );
@@ -543,6 +597,14 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontSize: 14,
     lineHeight: 20,
+  },
+  ttsBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 6,
+    marginRight: -2,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    opacity: 0.85,
   },
   inputBar: {
     flexDirection: 'row',

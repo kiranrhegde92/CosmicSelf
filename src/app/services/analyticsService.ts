@@ -84,4 +84,6 @@ export const Events = {
   PaywallShown: 'paywall_shown',
   SubscriptionStarted: 'subscription_started',
   PartnerAdded: 'partner_added',
+  ShareCompleted: 'share_completed',
+  ChatTtsPlayed: 'chat_tts_played',
 } as const;
