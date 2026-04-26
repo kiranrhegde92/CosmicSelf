@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, {
   useAnimatedStyle,
@@ -19,8 +19,10 @@ import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import AuraRing from '../components/cosmic/AuraRing';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicIcon from '../components/ui/CosmicIcon';
+import Paywall from '../components/ui/Paywall';
 import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
+import { usePremium } from '../store/usePremium';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
@@ -37,10 +39,19 @@ export default function VideoCallScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
+  const premium = usePremium();
 
   const [muted, setMuted] = useState(false);
   const [video, setVideo] = useState(true);
   const [stateIdx, setStateIdx] = useState(0);
+
+  const isPremium = premium.isPremium;
+  const showPaywall = premium.showPaywall;
+  useFocusEffect(
+    useCallback(() => {
+      if (!isPremium) showPaywall();
+    }, [isPremium, showPaywall]),
+  );
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -143,6 +154,20 @@ export default function VideoCallScreen() {
             </View>
           </Pressable>
         </View>
+
+        <Paywall
+          visible={premium.paywallVisible}
+          onClose={() => {
+            premium.hidePaywall();
+            if (!premium.isPremium) navigation.goBack();
+          }}
+          feature="AI Video Call"
+          bullets={[
+            'Live video sessions with your astrologer',
+            'Personalized voice + visual readings',
+            'Unlimited weekly sessions on Cosmic Master',
+          ]}
+        />
       </SafeAreaView>
     </CosmicBackground>
   );

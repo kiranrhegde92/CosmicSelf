@@ -8,10 +8,10 @@ import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicButton from '../components/ui/CosmicButton';
+import Skeleton from '../components/ui/Skeleton';
 import BirthChartPreview from '../components/astrology/BirthChartPreview';
 import CosmicIcon, { IconName } from '../components/ui/CosmicIcon';
 import { astrologyService, ChartCardData } from '../services/astrologyService';
-import { birthChart as mockBirthChart } from '../data/mockInsights';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
@@ -30,7 +30,7 @@ const items: {
 
 export default function BirthChartScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const [chart, setChart] = useState<ChartCardData>(mockBirthChart);
+  const [chart, setChart] = useState<ChartCardData | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -56,7 +56,7 @@ export default function BirthChartScreen() {
 
           <View style={styles.grid}>
             {items.map((it) => {
-              const data = chart[it.key];
+              const data = chart?.[it.key];
               return (
                 <View key={it.key} style={styles.cell}>
                   <GlassCard padding={spacing.md} style={{ flex: 1 }}>
@@ -66,8 +66,18 @@ export default function BirthChartScreen() {
                       </View>
                       <Text style={styles.cardTitle}>{it.title}</Text>
                     </View>
-                    <Text style={styles.cardValue}>{data.name}</Text>
-                    <Text style={styles.cardDetail}>{data.detail}</Text>
+                    {data ? (
+                      <>
+                        <Text style={styles.cardValue}>{data.name}</Text>
+                        <Text style={styles.cardDetail}>{data.detail}</Text>
+                      </>
+                    ) : (
+                      <View style={{ marginTop: spacing.sm, gap: 6 }}>
+                        <Skeleton variant="line" width="70%" height={14} />
+                        <Skeleton variant="line" width="100%" height={10} />
+                        <Skeleton variant="line" width="80%" height={10} />
+                      </View>
+                    )}
                   </GlassCard>
                 </View>
               );
@@ -78,6 +88,7 @@ export default function BirthChartScreen() {
             title="Ask AI to Explain My Chart"
             icon="sparkle"
             onPress={() => navigation.navigate('Chat' as any)}
+            disabled={!chart}
             style={{ marginTop: spacing.lg }}
           />
         </ScrollView>

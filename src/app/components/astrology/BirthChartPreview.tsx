@@ -36,7 +36,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-export default function BirthChartPreview({ size = 300, rotate = true, style }: Props) {
+function BirthChartPreview({ size = 300, rotate = true, style }: Props) {
   const r = size / 2;
   const outerR = r * 0.92;
   const midR = r * 0.78;
@@ -172,3 +172,5 @@ export default function BirthChartPreview({ size = 300, rotate = true, style }: 
     </View>
   );
 }
+
+export default React.memo(BirthChartPreview);

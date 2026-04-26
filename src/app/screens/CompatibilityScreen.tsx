@@ -9,12 +9,14 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicButton from '../components/ui/CosmicButton';
 import CosmicIcon from '../components/ui/CosmicIcon';
+import Paywall from '../components/ui/Paywall';
 import CompatibilityMeter from '../components/astrology/CompatibilityMeter';
 import DailyInsightCard from '../components/astrology/DailyInsightCard';
 import ZodiacWheel from '../components/cosmic/ZodiacWheel';
 import { astrologyService } from '../services/astrologyService';
 import { tipFor, type CompatibilityReport } from '../services/compatibilityEngine';
 import { useOnboardingStore } from '../store/onboardingStore';
+import { usePremium } from '../store/usePremium';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -28,8 +30,18 @@ export default function CompatibilityScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const partner = useOnboardingStore((s) => s.partner);
   const userBirthDate = useOnboardingStore((s) => s.birthDate);
+  const premium = usePremium();
 
   const [state, setState] = useState<LiveOrMock>({ kind: 'placeholder' });
+
+  // Anyone landing here without entitlement gets the paywall on first paint.
+  const isPremium = premium.isPremium;
+  const showPaywall = premium.showPaywall;
+  useFocusEffect(
+    useCallback(() => {
+      if (!isPremium) showPaywall();
+    }, [isPremium, showPaywall]),
+  );
 
   const refresh = useCallback(async () => {
     if (!userBirthDate || !partner) {
@@ -78,6 +90,22 @@ export default function CompatibilityScreen() {
             />
           )}
         </ScrollView>
+
+        <Paywall
+          visible={premium.paywallVisible}
+          onClose={() => {
+            premium.hidePaywall();
+            // Free users that close the paywall on this gated screen go back
+            // home — staying here would just re-trigger the gate.
+            if (!premium.isPremium) navigation.goBack();
+          }}
+          feature="Cosmic Compatibility"
+          bullets={[
+            'Real synastry score from actual aspect angles',
+            'Emotional, communication, long-term, and challenges cards',
+            'Save partner charts and revisit anytime',
+          ]}
+        />
       </SafeAreaView>
     </CosmicBackground>
   );

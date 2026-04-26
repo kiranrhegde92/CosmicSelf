@@ -22,24 +22,39 @@ import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicIcon, { IconName } from '../components/ui/CosmicIcon';
+import Paywall from '../components/ui/Paywall';
 import AstrologerAvatar from '../components/astrologer/AstrologerAvatar';
 import AuraRing from '../components/cosmic/AuraRing';
 import { ASTROLOGERS } from '../data/astrologers';
 import { useOnboardingStore } from '../store/onboardingStore';
 import { useAuthStore } from '../store/authStore';
+import { usePremium } from '../store/usePremium';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/spacing';
 import { typography, fonts } from '../theme/typography';
 import { homeQuickActions } from '../data/mockInsights';
 import { MainStackParamList } from '../navigation/routes';
 
+// Quick-action keys that require Pro+ to access. Free users tapping
+// these get the paywall instead of the destination.
+const PREMIUM_KEYS = new Set(['video', 'compatibility']);
+
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const user = useAuthStore((s) => s.user);
   const astrologerId = useOnboardingStore((s) => s.selectedAstrologerId) ?? 'veda';
   const astrologer = ASTROLOGERS.find((a) => a.id === astrologerId)!;
+  const premium = usePremium();
 
   const greeting = getGreeting();
+
+  const onAction = (key: string) => {
+    if (PREMIUM_KEYS.has(key) && !premium.isPremium) {
+      premium.showPaywall();
+      return;
+    }
+    routeFromKey(key, navigation);
+  };
 
   return (
     <CosmicBackground intensity="high" showZodiacWheel>
@@ -99,7 +114,8 @@ export default function HomeScreen() {
                 label={a.label}
                 description={a.description}
                 tone={a.tone}
-                onPress={() => routeFromKey(a.key, navigation)}
+                locked={PREMIUM_KEYS.has(a.key) && !premium.isPremium}
+                onPress={() => onAction(a.key)}
               />
             ))}
           </View>
@@ -108,6 +124,11 @@ export default function HomeScreen() {
         </ScrollView>
 
         <AskBar onPress={() => navigation.navigate('Chat')} />
+
+        <Paywall
+          visible={premium.paywallVisible}
+          onClose={premium.hidePaywall}
+        />
       </SafeAreaView>
     </CosmicBackground>
   );
@@ -143,6 +164,7 @@ function FloatingAction({
   label,
   description,
   tone,
+  locked,
   onPress,
 }: {
   index: number;
@@ -150,6 +172,7 @@ function FloatingAction({
   label: string;
   description: string;
   tone: 'gold' | 'rose' | 'mint' | 'blue' | 'purple';
+  locked?: boolean;
   onPress: () => void;
 }) {
   const y = useSharedValue(0);
@@ -174,7 +197,10 @@ function FloatingAction({
 
   return (
     <Animated.View style={[styles.actionCell, animated]}>
-      <Pressable onPress={onPress} accessibilityLabel={label}>
+      <Pressable
+        onPress={onPress}
+        accessibilityLabel={locked ? `${label} — premium` : label}
+      >
         <View style={[styles.actionWrap, { borderColor: `${tint}66`, shadowColor: tint }]}>
           <LinearGradient
             colors={[`${tint}33`, 'rgba(20,18,41,0.85)']}
@@ -183,6 +209,11 @@ function FloatingAction({
             style={StyleSheet.absoluteFill}
           />
           <CosmicIcon name={icon} color={tint} size={22} />
+          {locked && (
+            <View style={styles.lockBadge}>
+              <CosmicIcon name="lock" color="#1A0F33" size={10} strokeWidth={2.5} />
+            </View>
+          )}
         </View>
         <Text style={styles.actionLabel}>{label}</Text>
         <Text style={styles.actionDesc} numberOfLines={1}>{description}</Text>
@@ -335,6 +366,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 14,
     elevation: 6,
+  },
+  lockBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.goldPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionLabel: {
     ...typography.caption,

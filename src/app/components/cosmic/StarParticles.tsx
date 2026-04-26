@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, {
+  cancelAnimation,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -8,6 +9,7 @@ import Animated, {
   withDelay,
   Easing,
 } from 'react-native-reanimated';
+import { useIsFocused } from '@react-navigation/native';
 
 import { colors } from '../../theme/colors';
 
@@ -29,11 +31,22 @@ type Props = {
 
 const palette = [colors.goldBright, colors.goldPrimary, '#E0CDFF', colors.white];
 
-const Particle = React.memo(function Particle({ star }: { star: Star }) {
+const Particle = React.memo(function Particle({
+  star,
+  paused,
+}: {
+  star: Star;
+  paused: boolean;
+}) {
   const opacity = useSharedValue(0.2);
   const scale = useSharedValue(0.7);
 
   useEffect(() => {
+    if (paused) {
+      cancelAnimation(opacity);
+      cancelAnimation(scale);
+      return;
+    }
     opacity.value = withDelay(
       star.delay,
       withRepeat(
@@ -50,7 +63,7 @@ const Particle = React.memo(function Particle({ star }: { star: Star }) {
         true,
       ),
     );
-  }, [opacity, scale, star.delay, star.duration]);
+  }, [opacity, scale, star.delay, star.duration, paused]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -77,8 +90,11 @@ const Particle = React.memo(function Particle({ star }: { star: Star }) {
   );
 });
 
-export default function StarParticles({ count, intensity = 'medium', style }: Props) {
+function StarParticles({ count, intensity = 'medium', style }: Props) {
   const total = count ?? (intensity === 'high' ? 60 : intensity === 'low' ? 18 : 36);
+  // Pause when the screen isn't focused — saves 30+ Reanimated handles per
+  // background screen.
+  const focused = useIsFocused();
 
   const stars = useMemo<Star[]>(() => {
     const arr: Star[] = [];
@@ -99,11 +115,13 @@ export default function StarParticles({ count, intensity = 'medium', style }: Pr
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
       {stars.map((s) => (
-        <Particle key={s.id} star={s} />
+        <Particle key={s.id} star={s} paused={!focused} />
       ))}
     </View>
   );
 }
+
+export default React.memo(StarParticles);
 
 const styles = StyleSheet.create({
   dot: {

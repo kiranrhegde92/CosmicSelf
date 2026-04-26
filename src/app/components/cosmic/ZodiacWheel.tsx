@@ -32,7 +32,7 @@ type Props = {
   style?: ViewStyle;
 };
 
-export default function ZodiacWheel({
+function ZodiacWheel({
   size = 280,
   rotateSpeed = 60000,
   showSigns = true,
@@ -160,6 +160,8 @@ export default function ZodiacWheel({
     </Animated.View>
   );
 }
+
+export default React.memo(ZodiacWheel);
 
 function starPath(cx: number, cy: number, outer: number, inner: number, points: number) {
   const step = Math.PI / points;

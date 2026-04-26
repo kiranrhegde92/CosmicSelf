@@ -96,7 +96,7 @@ const PALETTES: Record<
   },
 };
 
-export default function AstrologerAvatar({
+function AstrologerAvatar({
   visualKey,
   size = 200,
   glow = true,
@@ -314,3 +314,5 @@ export default function AstrologerAvatar({
     </View>
   );
 }
+
+export default React.memo(AstrologerAvatar);

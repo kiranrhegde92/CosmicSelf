@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { env, features } from '../config/env';
+import { useEntitlementStore, type Tier } from '../store/entitlementStore';
 
 /*
  * RevenueCat integration scaffold.
@@ -15,7 +16,13 @@ import { env, features } from '../config/env';
  * be developed and demoed without a dev build.
  */
 
-type PurchaseResult = { ok: boolean; planId: string; entitlement?: string };
+type PurchaseResult = { ok: boolean; planId: string; entitlement?: string; tier?: Tier };
+
+function planIdToTier(planId: string): Tier {
+  if (planId === 'master') return 'master';
+  if (planId === 'pro') return 'pro';
+  return 'free';
+}
 
 let bootstrapped = false;
 
@@ -52,13 +59,22 @@ export const paymentService = {
         if (!pkg) return { ok: false, planId };
         const { customerInfo } = await Purchases.purchasePackage(pkg);
         const entitlement = Object.keys(customerInfo.entitlements.active)[0];
-        return { ok: !!entitlement, planId, entitlement };
+        if (entitlement) {
+          const tier = planIdToTier(planId);
+          useEntitlementStore.getState().setTier(tier);
+          return { ok: true, planId, entitlement, tier };
+        }
+        return { ok: false, planId };
       } catch {
         return { ok: false, planId };
       }
     }
+    // Mock path: still flip the entitlement so dev flows can demo the
+    // gated screens without a real purchase.
     await new Promise((res) => setTimeout(res, 500));
-    return { ok: true, planId, entitlement: 'mock' };
+    const tier = planIdToTier(planId);
+    useEntitlementStore.getState().setTier(tier);
+    return { ok: true, planId, entitlement: 'mock', tier };
   },
 
   async restorePurchases(): Promise<PurchaseResult> {
@@ -69,11 +85,21 @@ export const paymentService = {
         const Purchases = require('react-native-purchases').default;
         const customerInfo = await Purchases.restorePurchases();
         const entitlement = Object.keys(customerInfo.entitlements.active)[0];
-        return { ok: !!entitlement, planId: 'restored', entitlement };
+        if (entitlement) {
+          const tier: Tier = entitlement.toLowerCase().includes('master') ? 'master' : 'pro';
+          useEntitlementStore.getState().setTier(tier);
+          return { ok: true, planId: 'restored', entitlement, tier };
+        }
+        return { ok: false, planId: 'restored' };
       } catch {
         return { ok: false, planId: 'restored' };
       }
     }
     return { ok: true, planId: 'restored', entitlement: 'mock' };
+  },
+
+  /** Wipe local entitlement (dev tool / "downgrade to free"). */
+  resetTier(): void {
+    useEntitlementStore.getState().setTier('free');
   },
 };

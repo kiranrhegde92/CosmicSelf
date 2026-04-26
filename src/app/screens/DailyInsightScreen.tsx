@@ -8,12 +8,12 @@ import CosmicBackground from '../components/cosmic/CosmicBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GlassCard from '../components/ui/GlassCard';
 import CosmicButton from '../components/ui/CosmicButton';
+import Skeleton, { SkeletonParagraph } from '../components/ui/Skeleton';
 import DailyInsightCard from '../components/astrology/DailyInsightCard';
 import ZodiacWheel from '../components/cosmic/ZodiacWheel';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { dailyInsight as mockDailyInsight } from '../data/mockInsights';
 import { astrologyService } from '../services/astrologyService';
 import type { DailyInsight } from '../services/dailyInsightEngine';
 import { savedInsightsRepository } from '../services/savedInsightsRepository';
@@ -21,7 +21,7 @@ import { MainStackParamList } from '../navigation/routes';
 
 export default function DailyInsightScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const [insight, setInsight] = useState<DailyInsight>(mockDailyInsight as DailyInsight);
+  const [insight, setInsight] = useState<DailyInsight | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -36,7 +36,7 @@ export default function DailyInsightScreen() {
   }, []);
 
   const onSave = async () => {
-    if (saved || saving) return;
+    if (!insight || saved || saving) return;
     setSaving(true);
     const id = await savedInsightsRepository.save({
       date: insight.date,
@@ -61,7 +61,10 @@ export default function DailyInsightScreen() {
   return (
     <CosmicBackground intensity="medium">
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <ScreenHeader title="Today's Cosmic Insight" subtitle={insight.date} />
+        <ScreenHeader
+          title="Today's Cosmic Insight"
+          subtitle={insight?.date}
+        />
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
@@ -69,34 +72,53 @@ export default function DailyInsightScreen() {
           <View style={styles.zodiacWrap}>
             <ZodiacWheel size={200} rotateSpeed={70000} />
             <View style={styles.zodiacGlyph}>
-              <Text style={styles.glyph}>{insight.zodiacGlyph}</Text>
-              <Text style={styles.zodiacName}>{insight.zodiac}</Text>
+              <Text style={styles.glyph}>{insight?.zodiacGlyph ?? '✦'}</Text>
+              <Text style={styles.zodiacName}>{insight?.zodiac ?? '...'}</Text>
             </View>
           </View>
 
-          <GlassCard style={styles.mainCard}>
-            <Text style={styles.headline}>{insight.headline}</Text>
-            <Text style={styles.body}>{insight.body}</Text>
-          </GlassCard>
+          {insight ? (
+            <GlassCard style={styles.mainCard}>
+              <Text style={styles.headline}>{insight.headline}</Text>
+              <Text style={styles.body}>{insight.body}</Text>
+            </GlassCard>
+          ) : (
+            <GlassCard style={styles.mainCard}>
+              <Skeleton variant="line" width="80%" height={20} />
+              <View style={{ height: spacing.sm }} />
+              <SkeletonParagraph lines={4} />
+            </GlassCard>
+          )}
 
-          <View style={styles.grid}>
-            {insight.sections.map((s) => (
-              <View key={s.key} style={styles.cell}>
-                <DailyInsightCard
-                  icon={s.icon}
-                  title={s.title}
-                  value={s.value}
-                  description={s.description}
-                  tone={s.tone}
-                />
-              </View>
-            ))}
-          </View>
+          {insight ? (
+            <View style={styles.grid}>
+              {insight.sections.map((s) => (
+                <View key={s.key} style={styles.cell}>
+                  <DailyInsightCard
+                    icon={s.icon}
+                    title={s.title}
+                    value={s.value}
+                    description={s.description}
+                    tone={s.tone}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {[0, 1, 2, 3].map((i) => (
+                <View key={i} style={styles.cell}>
+                  <Skeleton variant="card" height={104} />
+                </View>
+              ))}
+            </View>
+          )}
 
           <CosmicButton
             title="Ask Astrologer About Today"
             icon="chat"
             onPress={() => navigation.navigate('Chat' as any)}
+            disabled={!insight}
             style={{ marginTop: spacing.lg }}
           />
           <CosmicButton
@@ -104,7 +126,7 @@ export default function DailyInsightScreen() {
             icon={saved ? 'check' : 'star'}
             variant="glass"
             loading={saving}
-            disabled={saved}
+            disabled={!insight || saved}
             onPress={onSave}
             style={{ marginTop: spacing.sm }}
           />
