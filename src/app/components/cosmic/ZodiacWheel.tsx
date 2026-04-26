@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { ViewStyle } from 'react-native';
 import Animated, {
+  useReducedMotion,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -42,14 +43,16 @@ function ZodiacWheel({
   style,
 }: Props) {
   const rotation = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) return;
     rotation.value = withRepeat(
       withTiming(360, { duration: rotateSpeed, easing: Easing.linear }),
       -1,
       false,
     );
-  }, [rotation, rotateSpeed]);
+  }, [rotation, rotateSpeed, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, ViewStyle, StyleProp } from 'react-native';
 import Animated, {
+  useReducedMotion,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -75,15 +76,16 @@ function BirthChartPreview({ size = 300, rotate = true, chart, style }: Props) {
   const planetR = r * 0.68;
 
   const rotation = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (!rotate) return;
+    if (!rotate || reducedMotion) return;
     rotation.value = withRepeat(
       withTiming(360, { duration: 80000, easing: Easing.linear }),
       -1,
       false,
     );
-  }, [rotate, rotation]);
+  }, [rotate, rotation, reducedMotion]);
 
   const wheelStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

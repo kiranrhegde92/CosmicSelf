@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, {
+  useReducedMotion,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -28,8 +29,13 @@ export default function AuraRing({
   intensity = 'medium',
 }: Props) {
   const pulse = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      pulse.value = active ? 0.5 : 0; // hold a steady mid-state
+      return;
+    }
     if (active) {
       pulse.value = withRepeat(
         withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
@@ -39,7 +45,7 @@ export default function AuraRing({
     } else {
       pulse.value = withTiming(0, { duration: 400 });
     }
-  }, [active, pulse]);
+  }, [active, pulse, reducedMotion]);
 
   const baseScale = intensity === 'strong' ? 1.18 : intensity === 'soft' ? 1.06 : 1.12;
 

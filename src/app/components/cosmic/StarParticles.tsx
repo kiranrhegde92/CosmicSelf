@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
+  useReducedMotion,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -93,8 +94,10 @@ const Particle = React.memo(function Particle({
 function StarParticles({ count, intensity = 'medium', style }: Props) {
   const total = count ?? (intensity === 'high' ? 60 : intensity === 'low' ? 18 : 36);
   // Pause when the screen isn't focused — saves 30+ Reanimated handles per
-  // background screen.
+  // background screen. Also pause for users with reduce-motion on.
   const focused = useIsFocused();
+  const reducedMotion = useReducedMotion();
+  const paused = !focused || reducedMotion;
 
   const stars = useMemo<Star[]>(() => {
     const arr: Star[] = [];
@@ -115,7 +118,7 @@ function StarParticles({ count, intensity = 'medium', style }: Props) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
       {stars.map((s) => (
-        <Particle key={s.id} star={s} paused={!focused} />
+        <Particle key={s.id} star={s} paused={paused} />
       ))}
     </View>
   );
