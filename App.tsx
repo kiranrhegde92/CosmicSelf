@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React from 'react';
-import { I18nManager } from 'react-native';
+import { I18nManager, Text, TextInput } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,6 +13,19 @@ import './src/app/i18n';
 // Once an RTL string bundle ships and the user's device is in that locale,
 // the layout flips on next app launch.
 I18nManager.allowRTL(true);
+
+// Cap OS font scaling at 2x (200%). Above that headers and CTAs collide;
+// below 2x the cosmic layouts hold together. Text scaling itself stays
+// enabled (the default) so accessibility users still get larger text.
+const MAX_FONT_SCALE = 2.0;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(Text as any).defaultProps = (Text as any).defaultProps || {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(Text as any).defaultProps.maxFontSizeMultiplier = MAX_FONT_SCALE;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(TextInput as any).defaultProps = (TextInput as any).defaultProps || {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(TextInput as any).defaultProps.maxFontSizeMultiplier = MAX_FONT_SCALE;
 import RootNavigator from './src/app/navigation/RootNavigator';
 import { navigationTheme } from './src/app/theme/navigation';
 import ErrorBoundary from './src/app/components/ui/ErrorBoundary';
