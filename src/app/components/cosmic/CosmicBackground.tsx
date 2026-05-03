@@ -34,16 +34,34 @@ export default function CosmicBackground({
 
   return (
     <View style={[styles.root, style]}>
+      {/* Base multi-stop cosmic gradient — diagonal so the corners feel
+          uneven and atmospheric, not centered. */}
       <LinearGradient
         colors={grad as unknown as readonly [string, string, ...string[]]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.9, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       />
 
-      {/* Soft purple radial glow at top */}
+      {/* Off-center purple bloom at top-left — adds painted depth. */}
       <View pointerEvents="none" style={styles.topGlow} />
+      {/* Warm gold bloom at center-right — rare and subtle. */}
+      <View pointerEvents="none" style={styles.midGlow} />
+      {/* Deep violet bloom at bottom — grounds the screen. */}
       <View pointerEvents="none" style={styles.bottomGlow} />
+
+      {/* Vignette — darkens corners so center reads as the focus. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          'rgba(8,8,23,0)',
+          'rgba(8,8,23,0)',
+          'rgba(8,8,23,0.45)',
+        ]}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0.4 }}
+        end={{ x: 0.5, y: 1 }}
+      />
 
       {showZodiacWheel && (
         <View pointerEvents="none" style={styles.wheelLayer}>
@@ -79,22 +97,32 @@ const styles = StyleSheet.create({
   },
   topGlow: {
     position: 'absolute',
-    top: -150,
-    left: -100,
-    right: -100,
-    height: 320,
-    borderRadius: 320,
-    backgroundColor: 'rgba(58,27,109,0.45)',
-    opacity: 0.7,
+    top: -180,
+    left: -120,
+    width: 420,
+    height: 420,
+    borderRadius: 420,
+    backgroundColor: 'rgba(90,42,159,0.55)',
+    opacity: 0.85,
+  },
+  midGlow: {
+    position: 'absolute',
+    top: '38%',
+    right: -160,
+    width: 360,
+    height: 360,
+    borderRadius: 360,
+    backgroundColor: 'rgba(246,200,95,0.10)',
+    opacity: 0.9,
   },
   bottomGlow: {
     position: 'absolute',
-    bottom: -180,
-    left: -80,
-    right: -80,
-    height: 280,
-    borderRadius: 280,
-    backgroundColor: 'rgba(37,16,71,0.45)',
-    opacity: 0.6,
+    bottom: -200,
+    right: -60,
+    width: 380,
+    height: 380,
+    borderRadius: 380,
+    backgroundColor: 'rgba(58,27,109,0.55)',
+    opacity: 0.7,
   },
 });

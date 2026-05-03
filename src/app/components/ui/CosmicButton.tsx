@@ -109,16 +109,41 @@ export default function CosmicButton({
             borderRadius: radii.lg,
             opacity: isDisabled ? 0.55 : 1,
           },
-          variant === 'primary' && shadows.goldGlowSoft,
+          variant === 'primary' && shadows.goldGlow,
         ]}
       >
         {variant === 'primary' && (
-          <LinearGradient
-            colors={gradients.goldButton as unknown as readonly [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <>
+            {/* Base diagonal gold gradient — the body of the button. */}
+            <LinearGradient
+              colors={gradients.goldButton as unknown as readonly [string, string, ...string[]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Top inner-sheen — a thin near-white highlight along the upper
+                edge so the gold reads as physically lit, not flat. */}
+            <LinearGradient
+              colors={[
+                'rgba(255,255,255,0.55)',
+                'rgba(255,255,255,0.12)',
+                'rgba(255,255,255,0)',
+              ]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={[styles.primarySheen, { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg }]}
+              pointerEvents="none"
+            />
+            {/* Bottom inner-shade — slight darkening at the lower edge for
+                a forged/brushed look. */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(122,90,36,0.35)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={[styles.primaryShade, { borderBottomLeftRadius: radii.lg, borderBottomRightRadius: radii.lg }]}
+              pointerEvents="none"
+            />
+          </>
         )}
         {variant === 'secondary' && (
           <LinearGradient
@@ -191,6 +216,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  primarySheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+  },
+  primaryShade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
   },
   content: {
     flexDirection: 'row',
